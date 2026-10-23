@@ -85,6 +85,8 @@ On-screen links are limited to the four seeded synthetic accounts. With demo see
 
 The default local demo still runs without external accounts or services. See [deployment and operator commands](docs/DEPLOYMENT.md), [API contracts](docs/API.md), and [remaining security boundaries](docs/SECURITY_AND_LIMITATIONS.md). Native Outlook/Word and real notary-vendor integrations remain outside the supplied implementation.
 
+Related sections use tabs in Overview, matters, intake, exports, integrations, pilot measurement, security and settings. Use the arrow keys, Home and End to move between tabs. Switching tabs preserves form drafts, selected files and transfer previews. Selection is remembered during page updates and cleared on sign-out. In Pilot measurement, use **Record measurements** to enter baselines and work sessions; in Settings, use **My account** to change your password.
+
 ## Guided demonstration in about three minutes
 
 1. Sign in as `admin@keller.demo`.

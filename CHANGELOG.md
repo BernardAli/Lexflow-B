@@ -1,5 +1,12 @@
 # Changelog
 
+## Interface update — 2026-10-23
+
+- Grouped related sections into shared tabs across Overview, matters, intake, exports, integrations, pilot measurement, security and settings.
+- Added keyboard navigation, labelled panels, mobile scrolling, section counts and selection retention during page updates.
+- Preserved form drafts, selected upload files and transfer previews when switching tabs; cleared tab preferences on sign-out.
+- Opened the matter's Exports tab after file generation and limited the workspace-members tab to administrators.
+
 ## 0.10.0-prototype — 2026-10-22
 
 - Added Workflow Studio with transient previews, tenant-scoped literal-label learning, version history and optimistic rule updates.

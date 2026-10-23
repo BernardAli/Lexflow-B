@@ -271,12 +271,19 @@ def test_dedicated_workspace_hardened_startup_and_https(api_client, monkeypatch,
     monkeypatch.setenv("LEXFLOW_ALLOWED_HOSTS", "testserver")
     monkeypatch.setenv("LEXFLOW_PUBLIC_URL", "https://testserver")
     monkeypatch.setenv("LEXFLOW_AUDIT_KEY", "a" * 48)
+    monkeypatch.setenv("LEXFLOW_MFA_KEY", Fernet.generate_key().decode())
     monkeypatch.setenv("LEXFLOW_STORAGE_KEYS", json.dumps({"office-test": [Fernet.generate_key().decode()]}))
     initialize()
     provision("office-test", "Test Office", "admin@office.test", "New-Dedicated-Password!")
     with TestClient(app, base_url="https://testserver") as client:
         response = client.post("/api/auth/login", json={"email": "admin@office.test", "password": "New-Dedicated-Password!"})
         assert response.status_code == 200 and "Secure" in response.headers["set-cookie"]
+        client.headers["X-CSRF-Token"] = response.json()["csrf"]
+        assert client.get("/api/dashboard").status_code == 403
+        from lexflow.mfa import totp
+        import time
+        setup = client.post("/api/auth/mfa/enroll", json={"password": "New-Dedicated-Password!"}).json()
+        assert client.post("/api/auth/mfa/confirm", json={"code": totp(setup["secret"], int(time.time()) // 30)}).status_code == 200
         assert client.get("/api/auth/options").json()["demo_mode"] is False
         assert client.get("/docs").status_code == 404
         assert "strict-transport-security" in response.headers

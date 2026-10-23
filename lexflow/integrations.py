@@ -4,6 +4,7 @@ import hmac
 import json
 import os
 import re
+import ssl
 import time
 import uuid
 from urllib.parse import urlsplit
@@ -19,14 +20,14 @@ router = APIRouter(prefix="/api/integrations", tags=["Integrations"])
 
 class Transfer(BaseModel):
     matter_id: str
-    connector: Literal["demo_receiver", "webhook"] = "demo_receiver"
+    connector: Literal["demo_receiver", "webhook", "demo_notary"] = "demo_receiver"
     idempotency_key: str = Field(min_length=8, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
     preview_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class DryRun(BaseModel):
     matter_id: str
-    connector: Literal["demo_receiver", "webhook"] = "demo_receiver"
+    connector: Literal["demo_receiver", "webhook", "demo_notary"] = "demo_receiver"
 
 
 def webhook_target(tenant):
@@ -40,13 +41,30 @@ def webhook_target(tenant):
     return target
 
 
+def destination_target(tenant, connector):
+    if connector == "demo_notary":
+        from .demo_notary import target
+        return target(tenant)
+    return webhook_target(tenant) if connector == "webhook" else None
+
+
+def target_hash(target):
+    if target is None:
+        return "local-receiver-v1"
+    identity = {key: target.get(key) for key in ("identity", "secret", "require_signed_receipt")}
+    if not target.get("identity"):
+        identity["url"] = target["url"]
+        identity["ca_file"] = target.get("ca_file")
+    return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+
+
 def approved_payload(conn, user, data):
-    from .main import get_matter, export_payload
+    from .matter_service import get_matter, export_payload
     matter = get_matter(conn, user, data.matter_id)
     payload = json.loads(export_payload(conn, user, matter, "approved_export", "json"))
     payload.pop("not_a_live_transmission", None)
     payload.update(specification="lexflow-approved-transfer-v1", connector=data.connector,
-                   simulated=data.connector == "demo_receiver", workspace_id=user["tenant_id"])
+                   simulated=data.connector != "webhook", workspace_id=user["tenant_id"], source_matter_id=data.matter_id)
     return payload
 
 
@@ -57,22 +75,24 @@ def payload_hash(payload):
 @router.get("")
 def overview(user=Depends(require_user)):
     with db() as conn:
-        transfers = [dict(r) for r in conn.execute("""SELECT t.*,m.reference FROM integration_transfers t
-                     JOIN matters m ON m.id=t.matter_id WHERE t.tenant_id=? ORDER BY t.rowid DESC LIMIT 100""", (user["tenant_id"],))]
+        transfers = [dict(r) for r in conn.execute("""SELECT t.*,m.reference,COALESCE(j.attempt_count,0) AS attempt_count FROM integration_transfers t
+                     JOIN matters m ON m.id=t.matter_id LEFT JOIN integration_jobs j ON j.transfer_id=t.id
+                     WHERE t.tenant_id=? ORDER BY t.rowid DESC LIMIT 100""", (user["tenant_id"],))]
         records = [dict(r) for r in conn.execute("SELECT * FROM receiver_records WHERE tenant_id=? ORDER BY rowid DESC LIMIT 30", (user["tenant_id"],))]
-    return {"webhook_configured": bool(webhook_target(user["tenant_id"])), "transfers": transfers, "receiver_records": records,
+    return {"webhook_configured": bool(webhook_target(user["tenant_id"])), "notary_configured": bool(destination_target(user["tenant_id"], "demo_notary")),
+            "transfers": transfers, "receiver_records": records,
             "agents": [{"name": "Folder intake agent", "path": "agents/folder_agent.py", "status": "available"}],
             "vendor_plugins": "Outlook, Word and BNotK/XNP are not connected"}
 
 
 @router.post("/dry-run")
 def dry_run(data: DryRun, user=Depends(minimum_role("reviewer"))):
-    if data.connector == "webhook" and not webhook_target(user["tenant_id"]):
-        raise HTTPException(503, "No webhook is configured for this workspace")
+    if data.connector != "demo_receiver" and not destination_target(user["tenant_id"], data.connector):
+        raise HTTPException(503, "The selected destination is not configured for this workspace")
     with db() as conn:
         payload = approved_payload(conn, user, data)
     return {"valid": True, "payload": payload, "preview_hash": payload_hash(payload), "will_send": False,
-            "destination": "Local demonstration receiver" if data.connector == "demo_receiver" else "Configured HTTPS webhook"}
+            "destination": {"demo_receiver": "Local demonstration receiver", "demo_notary": "NotaryDesk Demo (HTTPS)", "webhook": "Configured HTTPS webhook"}[data.connector]}
 
 
 def send_webhook(target, payload, key):
@@ -80,7 +100,8 @@ def send_webhook(target, payload, key):
     stamp = str(int(time.time()))
     signature = hmac.new(target["secret"].encode(), stamp.encode() + b"." + body, hashlib.sha256).hexdigest()
     try:
-        with httpx.Client(timeout=10, follow_redirects=False, trust_env=False) as client:
+        verification = ssl.create_default_context(cafile=target["ca_file"]) if target.get("ca_file") else True
+        with httpx.Client(timeout=10, follow_redirects=False, trust_env=False, verify=verification) as client:
             response = client.post(target["url"], content=body, headers={"Content-Type": "application/json",
                 "Idempotency-Key": key, "X-LexFlow-Timestamp": stamp, "X-LexFlow-Signature": "sha256=" + signature})
         if 400 <= response.status_code < 500:
@@ -89,53 +110,47 @@ def send_webhook(target, payload, key):
             result = response.json()
             receipt = result.get("receipt_id", "")
             if result.get("accepted") is True and isinstance(receipt, str) and re.fullmatch(r"[\w.-]{1,128}", receipt):
+                if target.get("require_signed_receipt"):
+                    expected = "sha256=" + hmac.new(target["secret"].encode(), response.content, hashlib.sha256).hexdigest()
+                    if (not hmac.compare_digest(expected, response.headers.get("X-LexFlow-Receipt-Signature", ""))
+                            or result.get("idempotency_key") != key
+                            or result.get("payload_sha256") != hashlib.sha256(body).hexdigest()):
+                        return "uncertain", {"message": "Destination receipt could not be authenticated. Check the destination before retrying."}
                 return "accepted", {"receipt_id": receipt, "http_status": response.status_code}
         return "uncertain", {"message": "Destination did not provide a valid acceptance receipt. Check it before retrying with the same key."}
-    except (httpx.HTTPError, ValueError, TypeError, AttributeError):
+    except (httpx.HTTPError, ValueError, TypeError, AttributeError, OSError):
         return "uncertain", {"message": "Delivery outcome is uncertain. Check the destination and retry with the same key."}
 
 
 @router.post("/transfers")
 def transfer(data: Transfer, user=Depends(minimum_role("reviewer"))):
-    target = webhook_target(user["tenant_id"]) if data.connector == "webhook" else None
-    if data.connector == "webhook" and not target:
-        raise HTTPException(503, "No webhook is configured for this workspace")
-    # Serialize the approval check, delivery and receipt to prevent edits during handoff.
-    # Webhook timeout is bounded at 10s; destination must enforce the idempotency key.
+    target = destination_target(user["tenant_id"], data.connector)
+    if data.connector != "demo_receiver" and not target:
+        raise HTTPException(503, "The selected destination is not configured for this workspace")
     with db(write=True) as conn:
-        existing = conn.execute("SELECT * FROM integration_transfers WHERE tenant_id=? AND idempotency_key=?",
-                                (user["tenant_id"], data.idempotency_key)).fetchone()
-        if existing and (existing["matter_id"] != data.matter_id or existing["connector"] != data.connector):
-            raise HTTPException(409, "This idempotency key belongs to another transfer")
-        if existing and existing["payload_hash"] != data.preview_hash:
-            raise HTTPException(409, "This key belongs to a different approved payload")
+        existing = conn.execute("SELECT * FROM integration_transfers WHERE tenant_id=? AND idempotency_key=?", (user["tenant_id"], data.idempotency_key)).fetchone()
+        if existing and (existing["matter_id"] != data.matter_id or existing["connector"] != data.connector or existing["payload_hash"] != data.preview_hash):
+            raise HTTPException(409, "This idempotency key belongs to another transfer or approved payload")
         if existing and existing["status"] == "accepted":
             return json.loads(existing["receipt_json"]) | {"replayed": True}
         payload = approved_payload(conn, user, data)
         digest = payload_hash(payload)
         if digest != data.preview_hash:
             raise HTTPException(409, "The approved data changed after preview. Run a new dry run")
-        if existing and existing["payload_hash"] != digest:
-            raise HTTPException(409, "Approved data changed. Preview it again and use a new transfer key")
         transfer_id = existing["id"] if existing else uuid.uuid4().hex
-        if data.connector == "demo_receiver":
-            state, receipt = "accepted", {"receipt_id": "DEMO-" + transfer_id[:12].upper()}
-        else:
-            state, receipt = send_webhook(target, payload, data.idempotency_key)
-        result = receipt | {"id": transfer_id, "status": state, "simulated": data.connector == "demo_receiver",
-                            "idempotency_key": data.idempotency_key, "created_at": utcnow(), "replayed": False}
-        if existing:
-            conn.execute("UPDATE integration_transfers SET status=?,receipt_json=? WHERE id=?", (state, json.dumps(result), transfer_id))
-        else:
-            conn.execute("INSERT INTO integration_transfers VALUES(?,?,?,?,?,?,?,?,?,?)", (transfer_id, user["tenant_id"], data.matter_id,
-                         data.connector, data.idempotency_key, digest, state, json.dumps(result), user["id"], utcnow()))
-        if state == "accepted":
-            if data.connector == "demo_receiver":
-                conn.execute("INSERT INTO receiver_records VALUES(?,?,?,?,?)", (transfer_id, user["tenant_id"], data.matter_id, json.dumps(payload), utcnow()))
-            conn.execute("UPDATE matters SET status='exported',updated_at=? WHERE id=?", (utcnow(), data.matter_id))
-        record_audit(conn, user["tenant_id"], data.matter_id, user["id"], "connector_transfer_" + state,
-                     {"transfer_id": transfer_id, "connector": data.connector, "payload_hash": digest, "receipt": result})
-    return result
+        job = conn.execute("SELECT target_hash FROM integration_jobs WHERE transfer_id=?", (transfer_id,)).fetchone()
+        if job and job["target_hash"] != target_hash(target):
+            raise HTTPException(409, "The destination changed. Check the earlier outcome before preparing another transfer")
+        if not existing:
+            result = {"id": transfer_id, "status": "pending", "connector": data.connector,
+                      "simulated": data.connector != "webhook", "idempotency_key": data.idempotency_key,
+                      "created_at": utcnow(), "replayed": False}
+            conn.execute("INSERT INTO integration_transfers VALUES(?,?,?,?,?,?,?,?,?,?)", (transfer_id, user["tenant_id"], data.matter_id, data.connector, data.idempotency_key, digest, "pending", json.dumps(result), user["id"], utcnow()))
+            record_audit(conn, user["tenant_id"], data.matter_id, user["id"], "connector_transfer_queued", {"transfer_id": transfer_id, "payload_hash": digest, "connector": data.connector})
+        if not job:
+            conn.execute("INSERT INTO integration_jobs(transfer_id,payload_json,target_hash,updated_at) VALUES(?,?,?,?)", (transfer_id, json.dumps(payload), target_hash(target), utcnow()))
+    from .delivery import deliver
+    return deliver(user["tenant_id"], transfer_id)
 
 
 @router.post("/intake")

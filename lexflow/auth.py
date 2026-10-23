@@ -32,19 +32,30 @@ def login(email: str, password: str, client_ip="unknown"):
         valid = verify_password(user["password_hash"] if user else DUMMY_HASH, password)
         if not user or not valid:
             raise HTTPException(status_code=401, detail="Invalid email or password")
-        token = secrets.token_urlsafe(40)
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
-        csrf = secrets.token_urlsafe(32)
-        expires_at = (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(timespec="seconds")
-        conn.execute("INSERT INTO sessions VALUES(?,?,?,?,?)", (token_hash, user["id"], csrf, expires_at, utcnow()))
-        conn.execute("INSERT INTO session_activity VALUES(?,?)", (token_hash, utcnow()))
-        return token, csrf, public_user(conn, user)
+        if conn.execute("SELECT 1 FROM mfa_credentials WHERE user_id=? AND enabled=1", (user["id"],)).fetchone():
+            from .mfa import challenge
+            return challenge(conn, user["id"])
+        return create_session(conn, user)
+
+
+def create_session(conn, user, *, mfa_verified=False):
+    token = secrets.token_urlsafe(40)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    csrf = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(timespec="seconds")
+    conn.execute("INSERT INTO sessions VALUES(?,?,?,?,?)", (token_hash, user["id"], csrf, expires_at, utcnow()))
+    conn.execute("INSERT INTO session_activity VALUES(?,?)", (token_hash, utcnow()))
+    if mfa_verified:
+        conn.execute("INSERT INTO session_mfa VALUES(?,?)", (token_hash, utcnow()))
+    return token, csrf, public_user(conn, user)
 
 
 def public_user(conn, user):
+    from .mfa import required
     tenant = conn.execute("SELECT name FROM tenants WHERE id=?", (user["tenant_id"],)).fetchone()
     return {"id": user["id"], "tenant_id": user["tenant_id"], "workspace": tenant["name"],
-            "name": user["name"], "email": user["email"], "role": user["role"]}
+            "name": user["name"], "email": user["email"], "role": user["role"],
+            "mfa_required": required(), "mfa_enabled": bool(conn.execute("SELECT 1 FROM mfa_credentials WHERE user_id=? AND enabled=1", (user["id"],)).fetchone())}
 
 
 def require_user(request: Request):
@@ -63,6 +74,11 @@ def require_user(request: Request):
         if activity and activity["last_seen"] <= cutoff:
             raise HTTPException(status_code=401, detail="Session expired after inactivity")
         user = public_user(conn, row)
+        if user["mfa_enabled"] and not conn.execute("SELECT 1 FROM session_mfa WHERE token_hash=?", (token_hash,)).fetchone():
+            raise HTTPException(status_code=401, detail="Sign in again with two-factor authentication")
+        enrollment_paths = {"/api/auth/me", "/api/auth/logout", "/api/auth/mfa/status", "/api/auth/mfa/enroll", "/api/auth/mfa/confirm", "/api/config"}
+        if user["mfa_required"] and not user["mfa_enabled"] and request.url.path not in enrollment_paths:
+            raise HTTPException(status_code=403, detail="Set up two-factor authentication before opening the workspace")
         user["csrf"] = row["csrf_token"]
         user["session_hash"] = token_hash
         if request.method in {"POST", "PATCH", "PUT", "DELETE"}:
@@ -102,3 +118,4 @@ def change_password(user, current_password, new_password):
         conn.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(new_password), user["id"]))
         conn.execute("DELETE FROM sessions WHERE user_id=? AND token_hash<>?", (user["id"], user["session_hash"]))
         conn.execute("DELETE FROM password_resets WHERE user_id=?", (user["id"],))
+        conn.execute("DELETE FROM mfa_challenges WHERE user_id=?", (user["id"],))

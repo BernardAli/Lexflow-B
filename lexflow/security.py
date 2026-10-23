@@ -28,12 +28,22 @@ def validate_deployment():
     if not 1 <= int(os.getenv("LEXFLOW_IDLE_MINUTES", "30")) <= 720:
         raise RuntimeError("Session idle timeout must be 1–720 minutes")
     if hardened():
+        if os.getenv("LEXFLOW_DEMO_NOTARY") == "1":
+            raise RuntimeError("Disable the fictional notary destination in hardened deployments")
+        from cryptography.fernet import Fernet
+        from .mfa import required
+        if not required():
+            raise RuntimeError("Hardened profile requires two-factor authentication")
         public = urlsplit(os.getenv("LEXFLOW_PUBLIC_URL", ""))
         if (seed_demo_enabled() or not secure_cookies() or len(os.getenv("LEXFLOW_AUDIT_KEY", "")) < 32
                 or not os.getenv("LEXFLOW_STORAGE_KEYS") or not os.getenv("LEXFLOW_ALLOWED_HOSTS")
                 or "*" in allowed_hosts() or public.scheme != "https" or not public.hostname
                 or public.hostname.lower() not in allowed_hosts()):
             raise RuntimeError("Hardened profile requires demo seeding off, secure cookies, explicit hosts, an HTTPS public URL, a 32+ character external audit key, and workspace storage keys")
+        try:
+            Fernet(os.getenv("LEXFLOW_MFA_KEY", "").encode())
+        except (ValueError, TypeError) as exc:
+            raise RuntimeError("Hardened profile requires an external Fernet MFA encryption key") from exc
 
 
 def login_limit(email, ip):
@@ -52,6 +62,7 @@ def login_limit(email, ip):
 
 @router.get("/status")
 def status(user=Depends(require_user)):
+    from .mfa import required
     with db() as conn:
         sessions = conn.execute("SELECT COUNT(*) FROM sessions WHERE user_id=? AND expires_at>?", (user["id"], utcnow())).fetchone()[0]
         integrity = verify_integrity(conn, user["tenant_id"])
@@ -59,8 +70,9 @@ def status(user=Depends(require_user)):
             "storage_encryption": bool(keyring(user["tenant_id"])), "database_encryption": False,
             "login_rate_limiting": True, "idle_timeout_minutes": int(os.getenv("LEXFLOW_IDLE_MINUTES", "30")),
             "active_sessions": sessions, "audit_integrity": integrity,
+            "mfa_enabled": user["mfa_enabled"], "mfa_required": required(),
             "isolation": "single-workspace dedicated instance" if hardened() else "logical tenant scoping; deploy a separate instance and volume per workspace for dedicated isolation",
-            "limitations": ["SSO/MFA are not implemented", "Database metadata and extracted text require an encrypted volume", "Independent security review remains required"]}
+            "limitations": ["SSO is not implemented; authenticator-app MFA is available", "Database metadata and extracted text require an encrypted volume", "Independent security review remains required"]}
 
 
 @router.post("/sessions/revoke-others")

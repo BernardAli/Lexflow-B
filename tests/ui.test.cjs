@@ -14,7 +14,8 @@ async function browser(t,hash='') {
   dom.window.fetch = async () => ({ok:false, status:401, json:async()=>({detail:'Sign in'})});
   dom.window.eval(source + `
     globalThis.uiTest = {showModal,closeModal,reviewModal,fieldCard,exportModal,showLogin,
-      showForgotPassword,showResetPassword,render,workflowsPage,
+      showForgotPassword,showResetPassword,render,workflowsPage,tabGroup,
+      intakePage,settingsPage,pilotPage,integrationsPage,
       setState(value){Object.assign(S,value);},
       setMatterPage(fn){matterPage=fn;}
     };
@@ -219,4 +220,142 @@ test('a late workflow response cannot replace a newer page',async t=>{
   finish({ok:true,status:200,json:async()=>({rules:[]})});
   await assert.rejects(loading,error=>error.name==='AbortError');
   assert.equal(document.querySelector('#newer-page').textContent,'Pilot page');
+});
+
+const demoConfig={schemas:{property_purchase:{label:'Property purchase'}},field_meta:{},max_upload_mb:12,external_ai_enabled:false};
+const demoMatter={id:'case-one',reference:'DEMO-1',title:'Synthetic matter',matter_type:'property_purchase',status:'approved'};
+const response=body=>({ok:true,status:200,json:async()=>body});
+
+test('intake tabs preserve drafts and expose the selected panel to assistive technology',async t=>{
+  const {window,document,ui}=await browser(t);
+  window.history.replaceState(null,'','#/intake');
+  ui.setState({config:demoConfig});
+  let requests=0;
+  window.fetch=async()=>{requests++;return response({matters:[demoMatter]});};
+  await ui.intakePage();
+  const file=document.querySelector('#intake-method-tab-file');
+  const paste=document.querySelector('#intake-method-tab-paste');
+  assert.equal(file.getAttribute('aria-selected'),'true');
+  assert.equal(paste.tabIndex,-1);
+  paste.click();
+  const draft=document.querySelector('#paste-text');
+  draft.value='Buyer: A synthetic draft';
+  document.querySelector('#paste-name').value='keep-this-label.txt';
+  const panel=document.getElementById(paste.getAttribute('aria-controls'));
+  assert.equal(panel.hidden,false);
+  assert.equal(panel.getAttribute('aria-labelledby'),paste.id);
+  assert.equal(document.getElementById(file.getAttribute('aria-controls')).hidden,true);
+  file.click();paste.click();
+  assert.equal(document.querySelector('#paste-text'),draft,'Switching panels keeps the original form mounted');
+  assert.equal(draft.value,'Buyer: A synthetic draft');
+  assert.equal(document.querySelector('#paste-name').value,'keep-this-label.txt');
+  assert.equal(requests,1,'Switching tabs does not reload data or submit forms');
+});
+
+test('tab keyboard navigation wraps, supports Home and End, and keeps one tab stop',async t=>{
+  const {window,document,ui}=await browser(t);
+  document.querySelector('#app').innerHTML=ui.tabGroup('keyboard','Keyboard example',[
+    {id:'first',label:'First',content:'First content'},
+    {id:'second',label:'Second',content:'Second content'},
+    {id:'last',label:'Last',content:'Last content'}
+  ]);
+  const tabs=[...document.querySelectorAll('[role=tab]')];
+  const press=key=>document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));
+  tabs[0].focus();press('ArrowLeft');
+  assert.equal(document.activeElement,tabs[2]);
+  press('ArrowRight');assert.equal(document.activeElement,tabs[0]);
+  press('End');assert.equal(document.activeElement,tabs[2]);
+  press('Home');assert.equal(document.activeElement,tabs[0]);
+  press('ArrowRight');assert.equal(document.activeElement,tabs[1]);
+  assert.equal(tabs.filter(tab=>tab.tabIndex===0).length,1);
+  assert.equal(document.querySelectorAll('[role=tabpanel]:not([hidden])').length,1);
+  assert.equal(document.querySelector('[role=tabpanel]:not([hidden])').textContent,'Second content');
+});
+
+test('tab selection survives a refresh, is scoped to its matter, and clears at sign-out',async t=>{
+  const {document,ui}=await browser(t);
+  const items=[{id:'review',label:'Review',content:'Fields'},{id:'exports',label:'Exports',content:'Files'}];
+  const mount=()=>{document.querySelector('#app').innerHTML=ui.tabGroup('matter','Matter sections',items);};
+  ui.setState({route:'/matter/first'});mount();
+  document.querySelector('[data-tab=exports]').click();mount();
+  assert.equal(document.querySelector('[aria-selected=true]').dataset.tab,'exports');
+  ui.setState({route:'/matter/second'});mount();
+  assert.equal(document.querySelector('[aria-selected=true]').dataset.tab,'review');
+  ui.setState({route:'/matter/first'});mount();
+  assert.equal(document.querySelector('[aria-selected=true]').dataset.tab,'exports');
+  ui.showLogin();mount();
+  assert.equal(document.querySelector('[aria-selected=true]').dataset.tab,'review');
+});
+
+test('settings tabs retain unsaved mappings and hide membership for a non-admin session',async t=>{
+  const {window,document,ui}=await browser(t);
+  window.history.replaceState(null,'','#/settings');
+  ui.setState({config:demoConfig,user:{role:'admin',name:'Synthetic Admin',workspace:'Demo'}});
+  let memberRequests=0;
+  window.fetch=async url=>{
+    if(url==='/api/settings/users'){memberRequests++;return response({users:[{name:'Demo Member',email:'member@example.test',role:'reviewer'}]});}
+    if(url==='/api/settings/mappings')return response({mappings:{buyer_name:'Buyer.Name'}});
+    return response({profile:'demo',storage_encryption:false});
+  };
+  await ui.settingsPage();
+  const input=document.querySelector('.mapping-input');input.value='Unsaved.Buyer';
+  document.querySelector('[data-tab=account]').click();
+  document.querySelector('[data-tab=mappings]').click();
+  assert.equal(document.querySelector('.mapping-input').value,'Unsaved.Buyer');
+  document.querySelector('[data-tab=members]').click();
+  ui.setState({user:{role:'reviewer',name:'Synthetic Reviewer',workspace:'Demo'}});
+  await ui.settingsPage();
+  assert.equal(memberRequests,1,'Membership is requested only for the admin');
+  assert.equal(document.querySelector('[data-tab=members]'),null);
+  assert.ok(!document.querySelector('#app').textContent.includes('member@example.test'));
+  assert.equal(document.querySelector('[aria-selected=true]').dataset.tab,'mappings');
+  assert.equal(document.querySelector('.mapping-input').disabled,true);
+});
+
+test('saving a pilot baseline refreshes the values without leaving Record measurements',async t=>{
+  const {window,document,ui}=await browser(t);
+  window.history.replaceState(null,'','#/pilot');
+  ui.setState({config:demoConfig,user:{role:'admin',name:'Synthetic Admin',workspace:'Demo'}});
+  const rate={percent:null,numerator:0,denominator:0};
+  const data={baseline:null,pilot_minutes:null,time_saved_percent:null,eligible_matters:0,timed_matters:0,
+    coverage:rate,corrections:rate,low_confidence:rate,audit_coverage:rate,transfers:[],definitions:{time:'Reported time'}};
+  window.fetch=async(url,options={})=>{
+    if(url==='/api/matters')return response({matters:[demoMatter]});
+    if(options.method==='PUT'){data.baseline=JSON.parse(options.body);return response({ok:true});}
+    return response(data);
+  };
+  await ui.pilotPage();
+  document.querySelector('[data-tab=record]').click();
+  const form=document.querySelector('#pilot-baseline-form');
+  form.elements.minutes.value='20';form.elements.sample_size.value='3';
+  form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(document.querySelector('[aria-selected=true]').dataset.tab,'record');
+  assert.equal(document.querySelector('#pilot-baseline-form').elements.minutes.value,'20');
+  assert.equal(document.querySelector('#pilot-baseline-form').closest('[role=tabpanel]').hidden,false);
+});
+
+test('integration preview stays ready when inspecting receipts and connector tabs',async t=>{
+  const {window,document,ui}=await browser(t);
+  window.history.replaceState(null,'','#/integrations');
+  ui.setState({config:demoConfig});
+  let previews=0;
+  window.fetch=async url=>{
+    if(url==='/api/matters')return response({matters:[demoMatter]});
+    if(url==='/api/integrations/dry-run'){previews++;return response({preview_hash:'approved-fingerprint',payload:{approved:'synthetic payload'}});}
+    return response({webhook_configured:false,receiver_records:[],transfers:[]});
+  };
+  await ui.integrationsPage();
+  document.querySelector('[data-action=preview-transfer]').click();
+  await new Promise(resolve=>setImmediate(resolve));
+  const form=document.querySelector('#integration-form');
+  const preview=document.querySelector('#transfer-preview').textContent;
+  assert.equal(form.querySelector('[type=submit]').disabled,false);
+  document.querySelector('[data-tab=receipts]').click();
+  document.querySelector('[data-tab=connectors]').click();
+  document.querySelector('[data-tab=delivery]').click();
+  assert.equal(document.querySelector('#integration-form'),form);
+  assert.equal(document.querySelector('#transfer-preview').textContent,preview);
+  assert.equal(form.querySelector('[type=submit]').disabled,false);
+  assert.equal(previews,1);
 });

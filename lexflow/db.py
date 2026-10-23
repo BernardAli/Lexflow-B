@@ -141,6 +141,28 @@ CREATE TABLE IF NOT EXISTS auth_limits (
     scope_hash TEXT NOT NULL, window_start INTEGER NOT NULL, attempts INTEGER NOT NULL,
     PRIMARY KEY(scope_hash,window_start)
 );
+CREATE TABLE IF NOT EXISTS mfa_credentials (
+    user_id TEXT PRIMARY KEY REFERENCES users(id), secret_ciphertext TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 0, setup_expires INTEGER NOT NULL,
+    last_step INTEGER NOT NULL DEFAULT -1, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS mfa_recovery_codes (
+    user_id TEXT NOT NULL REFERENCES users(id), code_hash TEXT NOT NULL,
+    PRIMARY KEY(user_id,code_hash)
+);
+CREATE TABLE IF NOT EXISTS mfa_challenges (
+    token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
+    expires_at INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS session_mfa (
+    token_hash TEXT PRIMARY KEY REFERENCES sessions(token_hash) ON DELETE CASCADE,
+    verified_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS integration_jobs (
+    transfer_id TEXT PRIMARY KEY REFERENCES integration_transfers(id), payload_json TEXT NOT NULL,
+    target_hash TEXT NOT NULL, attempt_count INTEGER NOT NULL DEFAULT 0,
+    lease_until INTEGER NOT NULL DEFAULT 0, lease_token TEXT, updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS audit_integrity (
     audit_id TEXT PRIMARY KEY REFERENCES audit(id), tenant_id TEXT NOT NULL,
     position INTEGER NOT NULL, previous_hash TEXT NOT NULL, signature TEXT NOT NULL,

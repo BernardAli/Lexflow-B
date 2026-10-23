@@ -149,6 +149,7 @@ def complete_reset(token, new_password, confirm_password, client_ip):
             raise HTTPException(400, "This reset link is invalid or has expired. Request a new link.")
         conn.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(new_password), reset["user_id"]))
         conn.execute("DELETE FROM sessions WHERE user_id=?", (reset["user_id"],))
+        conn.execute("DELETE FROM mfa_challenges WHERE user_id=?", (reset["user_id"],))
         conn.execute("DELETE FROM password_resets WHERE user_id=?", (reset["user_id"],))
         record_audit(conn, reset["tenant_id"], None, None, "password_reset_completed",
                      {"user_id": reset["user_id"], "all_sessions_revoked": True})

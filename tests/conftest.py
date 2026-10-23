@@ -15,7 +15,8 @@ def api_client(tmp_path, monkeypatch):
     monkeypatch.setenv("LEXFLOW_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
     monkeypatch.setenv("LEXFLOW_IDLE_MINUTES", "30")
     monkeypatch.setenv("LEXFLOW_SECURE_COOKIES", "0")
-    for name in ("LEXFLOW_STORAGE_KEYS", "LEXFLOW_AUDIT_KEY", "LEXFLOW_WEBHOOK_TARGETS"):
+    monkeypatch.setenv("LEXFLOW_DEMO_NOTARY", "0")
+    for name in ("LEXFLOW_STORAGE_KEYS", "LEXFLOW_AUDIT_KEY", "LEXFLOW_WEBHOOK_TARGETS", "LEXFLOW_MFA_KEY", "LEXFLOW_REQUIRE_MFA"):
         monkeypatch.delenv(name, raising=False)
     with TestClient(app) as client:
         yield client

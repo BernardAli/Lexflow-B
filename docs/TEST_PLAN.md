@@ -66,6 +66,20 @@ Additional platform verification:
 | B17 | Use forged Host or exhausted sign-in attempts | Host rejected or 429 with Retry-After |
 | B18 | Leave a session idle or revoke other sessions | Expired/revoked sessions fail; retained current session continues |
 
+Tabbed interface verification:
+
+| ID | Scenario | Expected outcome |
+|---|---|---|
+| C01 | Switch sections with mouse, arrow keys, Home or End | One selected tab and visible panel; keyboard focus follows selection |
+| C02 | Switch intake modes with text and files selected | Draft text, document label and selected upload files remain intact |
+| C03 | Edit mappings, visit another tab and return | Unsaved edits remain; switching tabs submits no forms |
+| C04 | Save a baseline or refresh the same matter | The selected section remains open; another matter has its own selection |
+| C05 | Inspect receipts or connectors after a dry run | Preview and transfer key remain ready until the matter or destination changes |
+| C06 | Generate an approved matter export | Exports tab opens with the generated download and updated count |
+| C07 | Sign out or enter a reviewer workspace | Tab preferences clear; membership data and its tab remain admin-only |
+
+The tab update passed 18 interface tests and 81 backend tests. Chromium checks covered 125 panel views across 12 routes at widths 320, 390, 768, 1440 and 1920 pixels, checking panel relationships, keyboard focus, the 12px text minimum, horizontal overflow and the review/approval/export/receiver flow. Browser checks used isolated synthetic data.
+
 Run automated checks from the project root:
 
 ```bash
