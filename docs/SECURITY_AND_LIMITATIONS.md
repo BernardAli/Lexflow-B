@@ -1,0 +1,68 @@
+# Security, Confidentiality and Regulatory Limitations
+
+**This application is a demonstrator, not a security-certified product. Do not put actual client or notarial secrets into its preconfigured demo workspace.**
+
+## Controls already implemented
+
+- Argon2 password hashing, equal password-verification work for unknown users, persistent sign-in throttling and 30-minute idle session expiry.
+- Explicit allowed hosts, CSP, frame blocking, MIME sniffing protection, private API caching policy and HSTS on HTTPS responses.
+- Optional per-workspace Fernet encryption for new original files and exports, with key-ring rotation tools. Database text/metadata still need encrypted volumes.
+- Per-workspace HMAC audit chains, verification and externally retainable checkpoints.
+- Hardened HTTPS deployment profile with restricted application container and dedicated-office provisioning/backup tools.
+- Single-use password reset tokens (stored as SHA-256 hashes), 30-minute expiry, session revocation and persistent recovery rate limits.
+- Optional TLS-protected SMTP reset delivery with a configured HTTPS link origin; generic responses for known/unknown accounts. Local demonstration links are restricted to the four publicly documented seed identities and require demo mode.
+- Cryptographically random server sessions; only hashed session tokens are stored in SQLite.
+- HttpOnly and SameSite Strict session cookies (Secure cookies opt-in for HTTPS deployments).
+- CSRF token verification on state-mutating authenticated endpoints.
+- Matter, document, candidate, export, audit and mapping operations scoped to the authenticated tenant.
+- Role checks: analyst vs reviewer vs administrator.
+- All SQL uses parameterized values.
+- File extension allowlist and configurable file size limits.
+- Local-only document processing by default.
+- Explicitly configured external AI plus per-document opt-in, with reviewer approval still mandatory.
+- Original document SHA-256 hashes and evidence provenance.
+- Approval gate before file export.
+
+## Critical work required before production
+
+1. **Identity:** remove demo accounts, add SSO/OIDC, MFA, breached-password screening, suspicious sign-in monitoring and stronger session lifecycle policy; harden reset delivery with durable queues, monitoring and account recovery policy.
+2. **Network/application:** validate the supplied HTTPS profile in the target environment, add upload scanning and DDoS protections, review proxy trust and independently test all controls.
+3. **Storage/keys:** deploy encrypted database/backup volumes, managed key custody and isolated infrastructure. File encryption and rotation are implemented, but extracted text/metadata are not application-encrypted.
+4. **Tenant isolation:** decide on dedicated database/object store/keys per client or equivalent architecture; arrange independent red-team isolation tests.
+5. **LLM processing:** conduct DPIA and legal review, select contractually acceptable processors and residency, enforce DPA, no-training/no-retention settings where needed; redact data when feasible; test prompt injection and hallucinations.
+6. **OCR/extraction:** build quality benchmarks for German notarial document families, human acceptance thresholds, versioned field definitions, source-page anchoring and adversarial evaluation. Current confidence numbers are not calibrated.
+7. **Notarial integrations:** establish authorized vendor or BNotK integration, implement permission checks, dry-run, transactional handoff, idempotency, reconciliation and change rollback.
+8. **Audit:** move verified events/checkpoints to external write-once storage, establish immutable retention and clock synchronization; local HMAC chains alone do not prevent coordinated truncation by an administrator.
+9. **Operations:** backup/restore drills, disaster recovery, retention policies, regional hosting controls, observability, vulnerability management, penetration tests and secure SDLC.
+10. **Compliance:** qualified German notarial/legal review, including confidentiality and service-provider arrangements under applicable BNotO/NotAktVV provisions, GDPR processing agreements, and client deployment terms.
+
+## Known technical limitations
+
+- SQLite is suitable for a limited demo but not for concurrent enterprise multi-node workloads.
+- No 2FA/SSO or self-service user provisioning. Operator provisioning creates a dedicated workspace/admin; sign-in and password recovery have separate rate limits.
+- SMTP recovery requires operator configuration; background email delivery is not durable. Demo mode intentionally displays links only for seeded, publicly documented identities and must not be used for confidential data.
+- No automated DLP, antivirus scanning, malware quarantine or content disarm.
+- Original files/exports can be encrypted per workspace. SQLite text, candidates, receiver payloads and audit details require encrypted infrastructure volumes; no managed key service is supplied.
+- A folder intake agent and signed generic HTTPS destination adapter are included. Native Outlook/Word/DMS and vendor-specific notary/BNotK/XNP integrations are not implemented.
+- The `notary_demo` connector does **not** send data anywhere; it generates a file.
+- No certified electronic signatures, notarization, legality verification, land-register lookup, AML/KYC, jurisdiction checks or legal advice.
+- Scanned PDFs are OCR'd locally only where Tesseract and PDFium are available, with up to 12 OCR pages per document. Mixed PDFs are checked per page; image files process up to 12 frames. Failed or skipped pages/frames produce warnings.
+- External AI output is an unverified suggestion; source quote may be unavailable, model output can be incorrect, and real legal processing requires stricter provider arrangements.
+- Content parsing for complex nested/graphic PDFs and unusual Word files remains limited.
+- Approval is a workflow control, not formal legal authorization or electronic signature.
+- HMAC checks detect edited/interior missing audit events when the signing key is protected. External trusted checkpoints are necessary to detect coordinated tail truncation; the local database is not immutable.
+- Superseded exports remain on disk as historical artifacts, but new downloads are blocked after reopening, source changes or mapping changes. Already downloaded copies cannot be recalled.
+
+## Threats / mitigation targets
+
+| Threat | Demo mitigation | Required production addition |
+|---|---|---|
+| Cross-tenant reading | Tenant-scoped SQL + paths + tests | Dedicated isolation and external penetration testing |
+| Unauthorized edits | Roles + CSRF | MFA, granular policies, approval separation of duties |
+| Poisoned legal data | Conflict detection + human review | Page-level provenance, calibrated extraction, verification protocols |
+| Data loss / theft | Local filesystem, no outbound AI default | Encryption, backup/restore, tenant keys, vault access |
+| Tampering with audit | HMAC chain + verification/checkpoint export | External immutable retention and trusted checkpoints |
+| Malicious uploaded file | Extension/size checks | Malware scanning, sandbox parsing and CDR |
+| Credential stuffing | Argon2 hashing + persistent sign-in limits | Threat telemetry, MFA and distributed abuse protection |
+
+This document is technical product guidance, not legal advice.

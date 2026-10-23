@@ -1,0 +1,36 @@
+LEXFLOW AI | COMPREHENSIVE WORKING PROTOTYPE | OCTOBER 2026
+==========================================================
+
+1. Open README.md for full instructions.
+
+2. QUICKEST START: In this folder, run:
+      docker compose up --build
+   Then open http://localhost:8000
+
+   No Docker? On Linux/macOS run ./start.sh; on Windows run .\start.ps1
+   Requires Python 3.12 and Internet for initial dependency installation.
+
+3. DEMO LOGIN:
+      Email:     admin@keller.demo
+      Password:  LexFlowDemo2026!
+
+4. WALKTHROUGH:
+   Dashboard -> Start guided demo -> Land register conflict
+   -> Review each required field -> Approve -> Export JSON/CSV.
+
+5. TEST DATA:
+   Browse samples/ for realistic SYNTHETIC German TXT, EML, PDF and DOCX files.
+
+6. DOCUMENTATION:
+   README.md
+   docs/ARCHITECTURE.md
+   docs/SECURITY_AND_LIMITATIONS.md
+   docs/PRODUCT_ROADMAP.md
+   docs/DEPLOYMENT.md
+   docs/API.md
+   docs/TEST_PLAN.md
+
+IMPORTANT: No live Outlook, BNotK/XNP or notary software is connected.
+Local approved exports are real files; the connector is simulated.
+This is a functional prototype, NOT a legally certified production SaaS.
+Do not upload confidential or genuine notarial client records.

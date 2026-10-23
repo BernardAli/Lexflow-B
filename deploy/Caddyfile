@@ -1,0 +1,7 @@
+{$LEXFLOW_DOMAIN} {
+    encode zstd gzip
+    request_body {
+        max_size 80MB
+    }
+    reverse_proxy lexflow:8000
+}

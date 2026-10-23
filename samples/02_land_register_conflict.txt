@@ -1,0 +1,6 @@
+GRUNDBUCHAUSZUG — FIKTIVES TESTDOKUMENT
+Grundbuch: München Blatt 872
+Objektadresse: Sonnenallee 24, 80331 München
+Verkäufer: Peter Müller
+Dieses Dokument wurde ausschließlich für eine Softwaredemo erstellt.
+Es ist KEIN echter Grundbuchauszug.

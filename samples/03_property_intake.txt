@@ -1,0 +1,8 @@
+Kaufvertragsvorbereitung — synthetischer Beispielsfall
+Käufer: Tobias Neumann
+Verkäufer: Lena Fischer
+Kaufpreis: EUR 425.000,00
+Objektadresse: Lindenstraße 12, 10115 Berlin
+Grundbuch: Berlin-Mitte Blatt 455
+Käufer E-Mail: tobias.neumann@example.test
+Beurkundungstermin: 10.12.2026

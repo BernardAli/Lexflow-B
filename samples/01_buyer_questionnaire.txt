@@ -1,0 +1,11 @@
+KÄUFERFRAGEBOGEN — NOTARIAT KELLER (SYNTHETISCHE DEMODATEN)
+Vorgang: Immobilienkauf Sonnenallee
+Käufer: Anna Schmidt
+Käufer E-Mail: anna.schmidt@example.test
+Verkäufer: Peter Müller
+Kaufpreis: 850.000,00 €
+Objektadresse: Sonnenallee 24, 80331 München
+Grundbuch: München Blatt 812
+Flurstück: Gemarkung München, Flur 5 / 204
+Beurkundungstermin: 17.11.2026
+Wichtiger Hinweis: Alle Namen, Beträge und Grundbuchangaben sind erfunden.

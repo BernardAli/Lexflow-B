@@ -1,0 +1,14 @@
+.venv/
+.venv-demo/
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.env
+.env.*
+!.env.example
+.DS_Store
+data/*
+!data/.gitkeep
+*.log
