@@ -31,24 +31,25 @@ SCHEMAS = {
   "general": {"label": "General matter / Sonstiges", "required": ["client_name", "matter_reference"], "optional": ["appointment_date"]},
 }
 
-# Explicitly labeled fields only: avoids inferring legally relevant data from context.
+# Explicit labels only. Label/value spacing cannot cross a line: an empty
+# label must never turn the next field label into a candidate value.
 PATTERNS = {
- "buyer_name": [r"(?:Käufer(?:in)?|Kaeufer(?:in)?|Erwerber(?:in)?|Buyer(?:\s+name)?)\s*[:=\-]\s*([^\n;]+)"],
- "seller_name": [r"(?:Verkäufer(?:in)?|Verkaeufer(?:in)?|Veräußerer(?:in)?|Seller(?:\s+name)?)\s*[:=\-]\s*([^\n;]+)"],
- "purchase_price": [r"(?:Kaufpreis(?:betrag)?|Purchase\s+price)\s*[:=\-]\s*(?:EUR|€)?\s*([\d][\d., \u00a0]*(?:\s*(?:€|EUR))?)"],
- "property_address": [r"(?:Objektadresse|Grundstücksadresse|Grundstuecksadresse|Immobilienadresse|Property\s+address|Adresse\s+(?:des\s+)?(?:Objekts|Grundstücks))\s*[:=\-]\s*([^\n;]+)"],
- "land_register": [r"(?:Grundbuch(?:blatt|auszug)?|Land\s+register)\s*[:=\-]\s*([^\n;]+)"],
- "buyer_email": [r"(?:Käufer\s*E-?Mail|Kaeufer\s*E-?Mail|Buyer\s*e-?mail)\s*[:=\-]\s*([^\s;]+)"],
- "appointment_date": [r"(?:Beurkundungstermin|Termin|Appointment\s+date)\s*[:=\-]\s*([^\n;]+)"],
- "parcel_reference": [r"(?:Flurstück(?:snummer)?|Flurstueck(?:snummer)?|Parcel(?:\s+reference)?)\s*[:=\-]\s*([^\n;]+)"],
- "deceased_name": [r"(?:Erblasser(?:in)?|Verstorben(?:e|er)|Deceased)\s*[:=\-]\s*([^\n;]+)"],
- "heir_name": [r"(?:Erb(?:e|in)|Heir)\s*[:=\-]\s*([^\n;]+)"],
- "estate_reference": [r"(?:Nachlassakte|Nachlassaktenzeichen|Estate\s+reference)\s*[:=\-]\s*([^\n;]+)"],
- "company_name": [r"(?:Firma|Gesellschaftsname|Company\s+name)\s*[:=\-]\s*([^\n;]+)"],
- "founder_name": [r"(?:Gründer(?:in)?|Gruender(?:in)?|Founder)\s*[:=\-]\s*([^\n;]+)"],
- "registered_address": [r"(?:Sitz\s+der\s+Gesellschaft|Geschäftssitz|Geschaeftssitz|Registered\s+address)\s*[:=\-]\s*([^\n;]+)"],
- "client_name": [r"(?:Mandant(?:in)?|Client\s+name)\s*[:=\-]\s*([^\n;]+)"],
- "matter_reference": [r"(?:Aktenzeichen|Matter\s+reference)\s*[:=\-]\s*([^\n;]+)"],
+ "buyer_name": [r"(?:Käufer(?:in)?|Kaeufer(?:in)?|Erwerber(?:in)?|Buyer(?:[^\S\r\n]+name)?)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "seller_name": [r"(?:Verkäufer(?:in)?|Verkaeufer(?:in)?|Veräußerer(?:in)?|Seller(?:[^\S\r\n]+name)?)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "purchase_price": [r"(?:Kaufpreis(?:betrag)?|Purchase[^\S\r\n]+price)[^\S\r\n]*[:=\-][^\S\r\n]*(?:EUR|€)?[^\S\r\n]*([\d][\d., \u00a0]*(?:[^\S\r\n]*(?:€|EUR))?)"],
+ "property_address": [r"(?:Objektadresse|Grundstücksadresse|Grundstuecksadresse|Immobilienadresse|Property[^\S\r\n]+address|Adresse[^\S\r\n]+(?:des[^\S\r\n]+)?(?:Objekts|Grundstücks))[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "land_register": [r"(?:Grundbuch(?:blatt|auszug)?|Land[^\S\r\n]+register)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "buyer_email": [r"(?:Käufer[^\S\r\n]*E-?Mail|Kaeufer[^\S\r\n]*E-?Mail|Buyer[^\S\r\n]*e-?mail)[^\S\r\n]*[:=\-][^\S\r\n]*([^\s;]+)"],
+ "appointment_date": [r"(?:Beurkundungstermin|Termin|Appointment[^\S\r\n]+date)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "parcel_reference": [r"(?:Flurstück(?:snummer)?|Flurstueck(?:snummer)?|Parcel(?:[^\S\r\n]+reference)?)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "deceased_name": [r"(?:Erblasser(?:in)?|Verstorben(?:e|er)|Deceased)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "heir_name": [r"(?:Erb(?:e|in)|Heir)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "estate_reference": [r"(?:Nachlassakte|Nachlassaktenzeichen|Estate[^\S\r\n]+reference)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "company_name": [r"(?:Firma|Gesellschaftsname|Company[^\S\r\n]+name)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "founder_name": [r"(?:Gründer(?:in)?|Gruender(?:in)?|Founder)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "registered_address": [r"(?:Sitz[^\S\r\n]+der[^\S\r\n]+Gesellschaft|Geschäftssitz|Geschaeftssitz|Registered[^\S\r\n]+address)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "client_name": [r"(?:Mandant(?:in)?|Client[^\S\r\n]+name)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
+ "matter_reference": [r"(?:Aktenzeichen|Matter[^\S\r\n]+reference)[^\S\r\n]*[:=\-][^\S\r\n]*([^\n;]+)"],
 }
 
 

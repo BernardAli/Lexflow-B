@@ -21,7 +21,7 @@ Learned rules apply to future intake for their workspace and matter type. They c
 - `POST /api/integrations/transfers` — reviewer/admin; `{ "matter_id": "...", "connector": "demo_receiver", "preview_hash": "hash-from-dry-run", "idempotency_key": "a-unique-request-key" }`.
 - `POST /api/integrations/intake` — authenticated multipart adapter for agents; `matter_id`, one `file`, `Idempotency-Key` header, session cookie and CSRF header. Uses the same document parsers and approval rules as browser intake; external AI is disabled for this adapter.
 
-Transfer destinations are `demo_receiver` and `webhook`. The local receiver stores a real local record and returns a receipt marked `simulated: true`. It sends nothing to a notary vendor. The webhook is available only when an operator configures a workspace-specific HTTPS destination. Approval, payload fingerprint and mapping checks run immediately before delivery. An accepted key replays its receipt; it does not resend. Reusing a key for another payload returns 409. Failed or uncertain deliveries can be retried with the **same key and approved fingerprint**. A changed approval requires a fresh preview/key. Intake receipts and document creation commit together; duplicate agent uploads do not invalidate reviews again.
+Transfer destinations are `demo_receiver`, `demo_notary` and `webhook`. `demo_notary` sends to the fictional local NotaryDesk TLS destination and remains marked simulated. Its acceptance receipt is signed and bound to the original transfer key and payload SHA-256. The local receiver stores a real local record and returns a receipt marked `simulated: true`. It sends nothing to a notary vendor. The webhook is available only when an operator configures a workspace-specific HTTPS destination. Approval, payload fingerprint and mapping checks run immediately before delivery. An accepted key replays its receipt; it does not resend. Reusing a key for another payload returns 409. Failed or uncertain deliveries can be retried with the **same key and approved fingerprint**. A changed approval requires a fresh preview/key. Intake receipts and document creation commit together; duplicate agent uploads do not invalidate reviews again.
 
 Webhook requests contain a UTF-8 JSON body and these headers:
 
@@ -33,7 +33,7 @@ X-LexFlow-Signature: sha256=HMAC-SHA256(secret, timestamp + "." + raw_body)
 
 The receiver must verify the HMAC and timestamp freshness, scope idempotency to `workspace_id` plus key, and return a 2xx JSON response `{ "accepted": true, "receipt_id": "destination-receipt-123" }`. Receipts permit 1–128 letters/digits/underscores/dots/hyphens. A 4xx records rejection. Network errors, 5xx, redirects or missing acceptance receipts record an **uncertain** outcome. Redirects and environment proxy settings are disabled; TLS certificates are verified. Endpoint secrets never appear in API responses. The receiver must enforce idempotency across a crash between its write and LexFlow's receipt commit.
 
-For this single-process prototype, a database write transaction serializes the final approval check and bounded webhook call. Delivery timeout is 10 seconds; other writes may wait. High-volume deployments require a durable outbox and reconciliation worker.
+A durable integration job records the payload and destination fingerprint before network I/O. A 120-second lease prevents approval-invalidating edits during the bounded 10-second call; unrelated database writes can proceed. Transfer states include pending, sending, accepted, failed, uncertain and cancelled. Accepted keys replay without sending; active leases return an in-progress receipt. A restart can resume pending/expired sends through `python -m lexflow.manage deliver-pending`. Stale approvals, changed destinations or revoked reviewer access cancel recovery. Uncertain outcomes require explicit same-key retry after destination inspection. A scheduled worker and high-volume reconciliation remain deployment work.
 
 ## Pilot evidence
 
@@ -136,3 +136,22 @@ Export preview accepts `fmt=json|csv` and `connector=approved_export|notary_demo
 Reopening, document intake, or changed mappings invalidate affected exports. History lists expose `invalidated_at` and `invalidation_reason`; superseded download endpoints return HTTP 409. Changed mappings also require renewed approval.
 
 Document detail includes persistent `warnings`. Field detail includes `review_candidate_id`, `reviewer_id`, and `validation_error`. Audit decision details preserve previous/new review values, complete notes, source candidates, and invalidated reviews.
+
+## Authenticator and demo destination APIs
+
+`POST /api/auth/login` returns either the existing `{user, csrf}` session response or `{mfa_required: true, challenge, expires_in_seconds}` without a session. Submit `{challenge, code}` to `POST /api/auth/mfa/verify` to obtain the session. A code can be a current authenticator code or unused recovery code. Validation never echoes secret inputs. Failed proof returns 401 and retains a bounded attempt counter.
+
+Authenticated endpoints (mutations require CSRF):
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/auth/mfa/status` | GET | Enabled/required status and unused recovery count |
+| `/api/auth/mfa/enroll` | POST | `{password}`; return setup key and otpauth URI |
+| `/api/auth/mfa/confirm` | POST | `{code}`; enable factor, return recovery codes once |
+| `/api/auth/mfa/recovery-codes` | POST | `{password, code}`; replace recovery codes |
+| `/api/auth/mfa/disable` | POST | `{password, code}`; allowed only for optional policy |
+| `/demo-notary` | GET | Fictional case-management browser workspace |
+| `/api/demo-notary/cases` | GET | Read workspace cases through signed TLS proxy |
+| `/api/demo-notary/cases/{id}/stage` | POST | Reviewer/admin `{stage, expected_revision}` |
+
+Mandatory MFA restricts an unenrolled session to identity/configuration, enrollment and logout; case APIs return 403. Factor activation and changes revoke other sessions. TOTP replay, expired challenges and consumed recovery codes are rejected. Destination stages are `received`, `in_preparation`, `ready_for_review`; stale revisions return 409, other workspace case IDs return 404.

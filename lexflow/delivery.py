@@ -71,9 +71,12 @@ def deliver(tenant, transfer_id):
             # Do not overwrite a newer workflow state if an abandoned lease expired.
             try:
                 fresh = approved_payload(conn, user, data)
-                if payload_hash(fresh) == transfer["payload_hash"]:
-                    conn.execute("UPDATE matters SET status='exported',updated_at=? WHERE id=? AND tenant_id=?", (utcnow(), transfer["matter_id"], tenant))
+                still_current = payload_hash(fresh) == transfer["payload_hash"]
             except Exception:
+                still_current = False
+            if still_current:
+                conn.execute("UPDATE matters SET status='exported',updated_at=? WHERE id=? AND tenant_id=?", (utcnow(), transfer["matter_id"], tenant))
+            else:
                 result["superseded"] = True
                 conn.execute("UPDATE integration_transfers SET receipt_json=? WHERE id=?", (json.dumps(result), transfer_id))
         record_audit(conn, tenant, transfer["matter_id"], transfer["actor_id"], "connector_transfer_" + state, {"transfer_id": transfer_id, "connector": transfer["connector"], "payload_hash": transfer["payload_hash"], "receipt": result})

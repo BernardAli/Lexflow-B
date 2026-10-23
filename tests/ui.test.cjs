@@ -15,7 +15,7 @@ async function browser(t,hash='') {
   dom.window.eval(source + `
     globalThis.uiTest = {showModal,closeModal,reviewModal,fieldCard,exportModal,showLogin,
       showForgotPassword,showResetPassword,render,workflowsPage,tabGroup,
-      intakePage,settingsPage,pilotPage,integrationsPage,
+      intakePage,settingsPage,pilotPage,integrationsPage,showMfaGate,showRecoveryCodes,mfaSettingsPanel,
       setState(value){Object.assign(S,value);},
       setMatterPage(fn){matterPage=fn;}
     };
@@ -46,6 +46,65 @@ test('Close, Cancel, backdrop and dialog interior have the correct behavior',asy
   ui.showModal('<p>Source content</p>');
   document.querySelector('.modal-backdrop').click();
   assert.equal(document.querySelector('.modal-dialog'),null);
+});
+
+test('password sign-in opens the factor challenge and failed proof stays outside the workspace',async t=>{
+  const {window,document,ui}=await browser(t);
+  ui.showLogin();
+  const requests=[];
+  window.fetch=async(url,options={})=>{
+    requests.push({url,body:options.body});
+    if(url==='/api/auth/login')return {ok:true,status:200,json:async()=>({mfa_required:true,challenge:'private-challenge'})};
+    return {ok:false,status:401,json:async()=>({detail:'The code is invalid or already used'})};
+  };
+  document.querySelector('#login-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(window.location.hash,'#/two-factor');
+  assert.equal(document.querySelector('.app-shell'),null);
+  assert.ok(!document.body.textContent.includes('private-challenge'));
+  const form=document.querySelector('#mfa-login-form');
+  form.elements.code.value='123456';
+  form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requests[1].url,'/api/auth/mfa/verify');
+  assert.deepEqual(JSON.parse(requests[1].body),{challenge:'private-challenge',code:'123456'});
+  assert.equal(form.querySelector('[role=alert]').hidden,false);
+  assert.ok(form.querySelector('[role=alert]').textContent.includes('invalid'));
+  assert.equal(document.querySelector('.app-shell'),null);
+  assert.equal(window.localStorage.length,0);
+});
+
+test('required enrollment keeps routes gated and setup secrets disappear at sign-out',async t=>{
+  const {window,document,ui}=await browser(t);
+  const requests=[];
+  window.fetch=async(url,options)=>{requests.push({url,options});return {ok:true,status:200,json:async()=>({secret:'SYNTHETICSETUPKEY',otpauth_uri:'unused'})};};
+  ui.showMfaGate({role:'admin',mfa_required:true,mfa_enabled:false},'enrollment-csrf');
+  window.history.replaceState(null,'','#/matters');await ui.render();
+  assert.equal(requests.length,0);
+  assert.equal(document.querySelector('.app-shell'),null);
+  const form=document.querySelector('#mfa-enroll-form');
+  form.elements.password.value='Test-password-only';
+  form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requests[0].url,'/api/auth/mfa/enroll');
+  assert.equal(requests[0].options.headers['X-CSRF-Token'],'enrollment-csrf');
+  assert.equal(document.querySelector('.mfa-setup-key').textContent,'SYNTHETICSETUPKEY');
+  assert.ok(document.querySelector('#mfa-confirm-form'));
+  assert.equal(window.localStorage.length,0);
+  ui.showLogin();
+  assert.ok(!document.body.textContent.includes('SYNTHETICSETUPKEY'));
+});
+
+test('recovery codes clear with private dialogs and mandatory MFA has no disable control',async t=>{
+  const {document,ui}=await browser(t);
+  ui.showRecoveryCodes(['single-use-private-code']);
+  assert.ok(document.querySelector('.mfa-recovery-codes').textContent.includes('single-use-private-code'));
+  ui.showLogin();
+  assert.ok(!document.body.textContent.includes('single-use-private-code'));
+  document.querySelector('#app').innerHTML=ui.mfaSettingsPanel({enabled:true,required:true,recovery_codes_remaining:9});
+  assert.equal(document.querySelector('[data-action=mfa-disable]'),null);
+  assert.ok(document.querySelector('[data-action=mfa-rotate]'));
+  assert.ok(document.querySelector('#app').textContent.includes('9 recovery codes'));
 });
 
 test('editing retains manual corrections and notes; selecting a source clears the override',async t=>{

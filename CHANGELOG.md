@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0-prototype — 2026-10-23
+
+- Added the fictional NotaryDesk Demo: separate encrypted SQLite case store, local TLS receiver, signed acceptance receipts, case register, preparation stages and delivery-evidence tabs.
+- Added authenticator-app MFA with encrypted identity-bound secrets, expiring challenges, replay prevention, single-use recovery codes and mandatory enrollment in the hardened profile.
+- Persisted delivery intents and bounded leases before network I/O; released the SQLite writer lock during delivery, protected approvals during active sends and added crash recovery with the original transfer key.
+- Added authenticated snapshot manifests, artifact/audit/MFA/destination verification and portable restores that rebase file paths and revoke sessions.
+- Added a versioned 28-case synthetic extraction benchmark and CI release checks. Fixed empty field labels consuming subsequent lines.
+- Extracted shared matter/approval services and updated deployment, recovery and demonstration documentation.
+
 ## Interface update — 2026-10-23
 
 - Grouped related sections into shared tabs across Overview, matters, intake, exports, integrations, pilot measurement, security and settings.

@@ -78,10 +78,11 @@ def measurement(conn, tenant, matter_type):
     transfers = [dict(r) for r in conn.execute("""SELECT t.connector,t.status,COUNT(*) AS count FROM integration_transfers t
                             JOIN matters m ON m.id=t.matter_id WHERE t.tenant_id=? AND m.matter_type=? GROUP BY t.connector,t.status""", (tenant, matter_type))]
     transfer_rates = []
-    for connector in ("demo_receiver", "webhook"):
+    for connector in ("demo_receiver", "webhook", "demo_notary"):
         total = sum(r["count"] for r in transfers if r["connector"] == connector)
         accepted = sum(r["count"] for r in transfers if r["connector"] == connector and r["status"] == "accepted")
-        transfer_rates.append({"connector": connector, "accepted": accepted, "total": total, "percent": percent(accepted, total), "simulated": connector == "demo_receiver"})
+        label = {"demo_receiver": "Local simulation", "webhook": "Configured HTTPS destination", "demo_notary": "NotaryDesk Demo (HTTPS)"}[connector]
+        transfer_rates.append({"connector": connector, "label": label, "accepted": accepted, "total": total, "percent": percent(accepted, total), "simulated": connector != "webhook"})
     return {"matter_type": matter_type, "eligible_matters": len(eligible), "baseline": dict(baseline) if baseline else None,
             "pilot_minutes": round(pilot_minutes, 2) if pilot_minutes is not None else None, "timed_matters": len(per_matter),
             "time_saved_percent": round((baseline["minutes"] - pilot_minutes) / baseline["minutes"] * 100, 1) if baseline and pilot_minutes is not None else None,

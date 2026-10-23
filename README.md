@@ -1,6 +1,6 @@
 # LexFlow AI — Working Product Prototype
 
-**Version:** 0.10.0-prototype · **Prepared for:** Allgift Technologies Ltd  
+**Version:** 0.11.0-prototype · **Prepared for:** Allgift Technologies Ltd<br/>
 **Focus:** German notaries and legal practices · **Date:** October 2026
 
 LexFlow is a **runnable, interactive local web application**, based on the supplied "LexFlow AI — Secure AI Workflow Automation" client concept deck. It demonstrates a real end-to-end workflow from document intake to reviewed, approved, downloadable structured data. It is **not just a clickable design**; it includes a database, authenticated API, document parsers, extraction logic, reviewer actions, audit records, and two separate demo workspaces.
@@ -79,13 +79,13 @@ On-screen links are limited to the four seeded synthetic accounts. With demo see
 ## Four additional workspaces
 
 - **Workflow studio:** test a literal document label, save a workspace-specific versioned rule and use it on future intake. Reviewers can preview; administrators save and pause rules. Select source text and choose **Teach a field** to start from a document. Example text is never stored in rule configuration.
-- **Integrations:** run an approval-gated dry run, send to the clearly marked local receiver, inspect its stored record and keep an idempotent receipt. An optional signed HTTPS webhook supports an explicitly configured destination. A working folder intake agent is included in `agents/folder_agent.py`.
+- **Integrations:** send approved data to **NotaryDesk Demo**, a fictional case-management workspace with a separate encrypted case store, verified TLS, signed receipts and preparation stages. The simpler local receiver is also available. An optional signed HTTPS webhook supports an explicitly configured destination. A working folder intake agent is included in `agents/folder_agent.py`.
 - **Security:** inspect session/cookie/encryption controls, revoke other sessions, verify HMAC audit chains and export checkpoints. A dedicated HTTPS deployment profile, operator provisioning, consistent snapshots and artifact-key rotation are included.
 - **Pilot measurement:** record an observed baseline, record work sessions or use a matter timer, inspect extraction/correction/low-confidence/audit rates, and export CSV evidence. Each metric explains its denominator; simulated transfer rates remain separate from HTTPS results. No measured time savings are invented.
 
 The default local demo still runs without external accounts or services. See [deployment and operator commands](docs/DEPLOYMENT.md), [API contracts](docs/API.md), and [remaining security boundaries](docs/SECURITY_AND_LIMITATIONS.md). Native Outlook/Word and real notary-vendor integrations remain outside the supplied implementation.
 
-Related sections use tabs in Overview, matters, intake, exports, integrations, pilot measurement, security and settings. Use the arrow keys, Home and End to move between tabs. Switching tabs preserves form drafts, selected files and transfer previews. Selection is remembered during page updates and cleared on sign-out. In Pilot measurement, use **Record measurements** to enter baselines and work sessions; in Settings, use **My account** to change your password.
+Related sections use tabs in Overview, matters, intake, exports, integrations, pilot measurement, security and settings. Use the arrow keys, Home and End to move between tabs. Switching tabs preserves form drafts, selected files and transfer previews. Selection is remembered during page updates and cleared on sign-out. In Pilot measurement, use **Record measurements** to enter baselines and work sessions; in Settings, use **My account** to change your password or set up an authenticator app.
 
 ## Guided demonstration in about three minutes
 
@@ -96,7 +96,9 @@ Related sections use tabs in Overview, matters, intake, exports, integrations, p
 5. Click **Review field** under *Land register*, inspect both source suggestions, select a value, and click **Confirm value**. Do the same for the other *required* fields.
 6. When all required fields are confirmed, click **Approve matter**.
 7. Click **Export approved data**, choose JSON or CSV, inspect the mapped payload, and generate a downloadable file.
-8. Check **Audit trail** and **Transfers & exports** to see the tracked actions.
+8. Open **Integrations**, choose **NotaryDesk Demo (HTTPS)**, run **Dry run**, then **Send approved data**.
+9. Click **Open demo notary**, inspect the received case and delivery evidence, and change its stage to **In preparation**.
+10. Check **Audit trail** and **Pilot measurement** to inspect recorded actions and measured outcomes.
 
 ### Test creation from scratch
 
@@ -194,3 +196,19 @@ Reopening a matter, adding documents, or changing destination mappings marks ear
 Read `docs/PRODUCT_ROADMAP.md` and `docs/SECURITY_AND_LIMITATIONS.md`. Priorities are validating the exact customer workflow and destination software, arranging supported API access, production-grade tenancy and encryption, stronger identity controls, robust OCR/AI accuracy evaluation, compliance review and disaster recovery testing.
 
 **Deliverable status:** Complete, runnable **functional prototype**; not a final legally deployable German notarial SaaS product.
+
+## Release verification and recovery
+
+```bash
+.venv-demo/bin/python -m pytest -q
+npm ci
+npm run test:ui
+.venv-demo/bin/python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95
+.venv-demo/bin/python -m lexflow.manage backup /tmp/lexflow-snapshot
+.venv-demo/bin/python -m lexflow.manage verify-backup /tmp/lexflow-snapshot
+.venv-demo/bin/python -m lexflow.manage restore /tmp/lexflow-snapshot /tmp/lexflow-restored
+```
+
+The versioned synthetic benchmark contains 28 hand-authored text cases covering all four matter types. Recorded precision is **100%**, recall **97.2%**, and F1 **98.6%**; two OCR-damaged labels remain misses. This evaluates text-to-candidate rules, not OCR quality or accuracy on real office documents. The committed dataset and report are in `evaluations/`; `--dataset` accepts independently labelled examples with the same explicit schema. CI runs tests, dependency checks and the benchmark on pushes and pull requests.
+
+Snapshots authenticate their file manifest, database, original-document hashes, encrypted artifacts, audit chains, MFA secrets and demo destination cases. Restore requires a new directory, relocates stored artifact paths and revokes old sessions/reset links. Supply the original external keys when configured; they are excluded from snapshots. See [deployment and recovery](docs/DEPLOYMENT.md).

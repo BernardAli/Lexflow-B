@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
         stop(destination)
 
 
-app = FastAPI(title="LexFlow AI", version="0.10.0-prototype", lifespan=lifespan,
+app = FastAPI(title="LexFlow AI", version="0.11.0-prototype", lifespan=lifespan,
               description="Synthetic demonstration of notarial document intake, verification and approved export.")
 app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "static"), name="static")
 
@@ -160,7 +160,7 @@ def page():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": "0.10.0-prototype", "environment": "HARDENED PROFILE" if hardened() else "LOCAL PROTOTYPE", "external_ai_enabled": allow_external_ai()}
+    return {"status": "ok", "version": "0.11.0-prototype", "environment": "HARDENED PROFILE" if hardened() else "LOCAL PROTOTYPE", "external_ai_enabled": allow_external_ai()}
 
 
 @app.post("/api/auth/login")

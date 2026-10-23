@@ -16,6 +16,7 @@ import ssl
 import threading
 import time
 import uuid
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -111,7 +112,7 @@ class Receiver(BaseHTTPRequestHandler):
             workspace = data.get("workspace_id", "")
             if not isinstance(workspace, str) or not re.fullmatch(r"[A-Za-z0-9_-]{3,64}", workspace):
                 raise ValueError
-            with sqlite3.connect(self.server.database, timeout=10) as conn:
+            with closing(sqlite3.connect(self.server.database, timeout=10)) as conn:
                 conn.row_factory = sqlite3.Row
                 if self.path == "/imports":
                     self.import_case(conn, data, raw, workspace)
@@ -194,7 +195,7 @@ def start():
     storage = secret_file(root / ".storage-key", Fernet.generate_key())
     cert_path, key_path = certificates(root)
     database = root / "cases.sqlite3"
-    with sqlite3.connect(database) as conn:
+    with closing(sqlite3.connect(database)) as conn:
         conn.executescript("""PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS cases(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,idempotency_key TEXT NOT NULL,
                 payload_sha256 TEXT NOT NULL,payload_ciphertext BLOB NOT NULL,receipt_json TEXT NOT NULL,

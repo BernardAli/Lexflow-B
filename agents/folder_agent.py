@@ -27,7 +27,15 @@ class FolderAgent:
     def login(self):
         response = self.client.post("/api/auth/login", json={"email": self.email, "password": self.password})
         response.raise_for_status()
-        self.csrf = response.json()["csrf"]
+        result = response.json()
+        if result.get("mfa_required"):
+            code = getpass.getpass("Authenticator code or unused recovery code: ")
+            response = self.client.post("/api/auth/mfa/verify", json={"challenge": result["challenge"], "code": code})
+            response.raise_for_status()
+            result = response.json()
+        if result["user"].get("mfa_required") and not result["user"].get("mfa_enabled"):
+            raise ValueError("Complete authenticator enrollment in the browser before using folder intake")
+        self.csrf = result["csrf"]
         config = self.client.get("/api/config")
         config.raise_for_status()
         self.max_bytes = config.json()["max_upload_mb"] * 1024 * 1024

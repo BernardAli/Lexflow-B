@@ -4,17 +4,15 @@ import getpass
 import json
 import os
 from pathlib import Path
-import shutil
-import sqlite3
-import tempfile
 import uuid
 import re
 from .auth import hash_password, validate_password
 from .db import db, initialize, record_audit, utcnow
 from .exporter import DEFAULT_MAPPINGS
 from .integrity import verify_integrity
-from .settings import data_dir, database_path
+from .settings import data_dir
 from .storage import keyring, protect, reveal
+from .snapshots import backup, restore, verify_snapshot
 
 
 def provision(tenant, name, email, password):
@@ -29,29 +27,6 @@ def provision(tenant, name, email, password):
         conn.execute("INSERT INTO users VALUES(?,?,?,?,?,?,?)", (user_id, tenant, email.strip().lower(), name + " Admin", "admin", hash_password(password), utcnow()))
         conn.executemany("INSERT INTO connector_mappings VALUES(?,?,?)", [(tenant, key, value) for key, value in DEFAULT_MAPPINGS.items()])
         record_audit(conn, tenant, None, user_id, "workspace_provisioned", {"deployment": "dedicated office"})
-
-
-def backup(destination):
-    destination = destination.expanduser().resolve()
-    if destination.exists() or destination.is_relative_to(data_dir()):
-        raise ValueError("Choose a new backup directory outside the active data directory")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkdtemp(prefix=".lexflow-backup-", dir=destination.parent))
-    try:
-        with db(write=True):
-            with sqlite3.connect(database_path()) as source, sqlite3.connect(temporary / "lexflow.sqlite3") as target:
-                source.backup(target)
-            for name in ("uploads", "exports"):
-                if (data_dir() / name).exists():
-                    shutil.copytree(data_dir() / name, temporary / name)
-            if (data_dir() / ".audit-key").exists():
-                shutil.copy2(data_dir() / ".audit-key", temporary / ".audit-key")
-        (temporary / "backup.json").write_text(json.dumps({"created_at": utcnow(), "format": "lexflow-snapshot-v1", "external_keys_included": False}))
-        os.chmod(temporary, 0o700)
-        temporary.rename(destination)
-    except BaseException:
-        shutil.rmtree(temporary, ignore_errors=True)
-        raise
 
 
 def rotate_artifacts(tenant):
@@ -87,11 +62,35 @@ def main():
     create.add_argument("--email", required=True)
     snap = sub.add_parser("backup")
     snap.add_argument("destination", type=Path)
+    check = sub.add_parser("verify-backup")
+    check.add_argument("source", type=Path)
+    recover = sub.add_parser("restore")
+    recover.add_argument("source", type=Path)
+    recover.add_argument("destination", type=Path)
+    pending = sub.add_parser("deliver-pending")
+    pending.add_argument("--limit", type=int, default=20)
     for name in ("verify-audit", "rotate-artifacts"):
         command = sub.add_parser(name)
         command.add_argument("--tenant-id", required=True)
     args = parser.parse_args()
+    if args.command == "verify-backup":
+        print(json.dumps(verify_snapshot(args.source), indent=2))
+        return
+    if args.command == "restore":
+        print(json.dumps(restore(args.source, args.destination), indent=2))
+        return
     initialize()
+    if args.command == "deliver-pending":
+        from .security import validate_deployment
+        from .demo_notary import start, stop
+        from .delivery import resume_pending
+        validate_deployment()
+        destination = start()
+        try:
+            print(json.dumps(resume_pending(max(1, min(args.limit, 100))), indent=2))
+        finally:
+            stop(destination)
+        return
     if args.command == "create-workspace":
         if not re.fullmatch(r"[A-Za-z0-9_-]{3,64}", args.tenant_id):
             parser.error("Tenant ID must use 3–64 letters, digits, hyphens or underscores")

@@ -1,0 +1,36 @@
+name: Release checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          npm ci
+      - name: Backend and browser logic
+        run: |
+          python -m pytest -q
+          npm run test:ui
+          python -m pip check
+          node --check static/app.js
+          node --check static/features.js
+          node --check static/notary.js
+      - name: Versioned extraction evaluation
+        run: python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extraction-evaluation
+          path: /tmp/extraction-report.json

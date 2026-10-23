@@ -1,0 +1,401 @@
+{
+  "format": "lexflow-extraction-evaluation-v1",
+  "version": "synthetic-v1",
+  "synthetic": true,
+  "limitations": "Small hand-authored synthetic regression set: explicit German/English labels, aliases, duplicates, missing fields, conflicting values and two OCR-damaged labels. Not a representative office sample or an OCR benchmark.",
+  "cases": [
+    {
+      "id": "property-de",
+      "matter_type": "property_purchase",
+      "text": "Käufer: Lena Beispiel\nVerkäufer: Emil Muster\nKaufpreis: EUR 420.000,50\nObjektadresse: Testweg 12, 80331 München\nGrundbuch: München Blatt 104\nKäufer E-Mail: LENA@EXAMPLE.TEST\nTermin: 12.12.2026\nFlurstück: 8/17",
+      "expected": {
+        "buyer_name": [
+          "Lena Beispiel"
+        ],
+        "seller_name": [
+          "Emil Muster"
+        ],
+        "purchase_price": [
+          "420000.50"
+        ],
+        "property_address": [
+          "Testweg 12, 80331 München"
+        ],
+        "land_register": [
+          "München Blatt 104"
+        ],
+        "buyer_email": [
+          "lena@example.test"
+        ],
+        "appointment_date": [
+          "12.12.2026"
+        ],
+        "parcel_reference": [
+          "8/17"
+        ]
+      }
+    },
+    {
+      "id": "property-en",
+      "matter_type": "property_purchase",
+      "text": "Buyer name = Morgan Example; Seller - Alex Sample; Purchase price: 230,000.00 EUR\nProperty address: 4 Example Street\nLand register: Sample Book 47",
+      "expected": {
+        "buyer_name": [
+          "Morgan Example"
+        ],
+        "seller_name": [
+          "Alex Sample"
+        ],
+        "purchase_price": [
+          "230000.00"
+        ],
+        "property_address": [
+          "4 Example Street"
+        ],
+        "land_register": [
+          "Sample Book 47"
+        ]
+      }
+    },
+    {
+      "id": "property-transliteration",
+      "matter_type": "property_purchase",
+      "text": "Kaeuferin: Sonja Fiktiv\nVerkaeuferin: Vera Beispiel\nKaufpreisbetrag: € 980 000,00\nGrundstuecksadresse: Beispielgasse 7\nGrundbuchblatt: Blatt 900\nFlurstuecksnummer: 19/2",
+      "expected": {
+        "buyer_name": [
+          "Sonja Fiktiv"
+        ],
+        "seller_name": [
+          "Vera Beispiel"
+        ],
+        "purchase_price": [
+          "980000.00"
+        ],
+        "property_address": [
+          "Beispielgasse 7"
+        ],
+        "land_register": [
+          "Blatt 900"
+        ],
+        "parcel_reference": [
+          "19/2"
+        ]
+      }
+    },
+    {
+      "id": "property-conflicting-sources",
+      "matter_type": "property_purchase",
+      "text": "Buyer: Amina Beispiel\nBuyer: Clara Muster\nGrundbuch: Blatt 104\nGrundbuch: Blatt 140",
+      "expected": {
+        "buyer_name": [
+          "Amina Beispiel",
+          "Clara Muster"
+        ],
+        "land_register": [
+          "Blatt 104",
+          "Blatt 140"
+        ]
+      }
+    },
+    {
+      "id": "property-repeated-normalized",
+      "matter_type": "property_purchase",
+      "text": "Buyer: Lena Beispiel\nBUYER: lena beispiel\nPurchase price: 420.000,50 EUR\nPurchase price: EUR 420000.50",
+      "expected": {
+        "buyer_name": [
+          "Lena Beispiel"
+        ],
+        "purchase_price": [
+          "420000.50"
+        ]
+      }
+    },
+    {
+      "id": "property-empty-labels",
+      "matter_type": "property_purchase",
+      "text": "Käufer:\nVerkäufer:\nKaufpreis: \nObjektadresse:\nGrundbuch:",
+      "expected": {}
+    },
+    {
+      "id": "property-negatives",
+      "matter_type": "property_purchase",
+      "text": "A meeting discussed a property. No purchaser or amount has been specified.\nNichtKäufer: Should Not Match\nSellerOther: Should Not Match",
+      "expected": {}
+    },
+    {
+      "id": "property-aliases",
+      "matter_type": "property_purchase",
+      "text": "Erwerberin: Nora Muster\nVeräußererin: Tessa Beispiel\nImmobilienadresse: Fiktivplatz 10\nAdresse des Objekts: Fiktivplatz 10",
+      "expected": {
+        "buyer_name": [
+          "Nora Muster"
+        ],
+        "seller_name": [
+          "Tessa Beispiel"
+        ],
+        "property_address": [
+          "Fiktivplatz 10"
+        ]
+      }
+    },
+    {
+      "id": "property-ocr-label-loss",
+      "matter_type": "property_purchase",
+      "text": "Kaufer: Lena Beispiel\nVerkaufer: Emil Muster\nKaufpreis: 123.000,00",
+      "expected": {
+        "buyer_name": [
+          "Lena Beispiel"
+        ],
+        "seller_name": [
+          "Emil Muster"
+        ],
+        "purchase_price": [
+          "123000.00"
+        ]
+      }
+    },
+    {
+      "id": "property-unlabelled-prose",
+      "matter_type": "property_purchase",
+      "text": "Lena Example intends to buy a house from Morgan Sample for four hundred thousand euros.",
+      "expected": {}
+    },
+    {
+      "id": "inheritance-de",
+      "matter_type": "inheritance",
+      "text": "Erblasser: Otto Beispiel\nErbe: Mira Muster\nNachlassakte: NL-2026-104\nBeurkundungstermin: 20.12.2026",
+      "expected": {
+        "deceased_name": [
+          "Otto Beispiel"
+        ],
+        "heir_name": [
+          "Mira Muster"
+        ],
+        "estate_reference": [
+          "NL-2026-104"
+        ],
+        "appointment_date": [
+          "20.12.2026"
+        ]
+      }
+    },
+    {
+      "id": "inheritance-en",
+      "matter_type": "inheritance",
+      "text": "Deceased: Robin Sample; Heir: Jamie Example; Estate reference: EST-47",
+      "expected": {
+        "deceased_name": [
+          "Robin Sample"
+        ],
+        "heir_name": [
+          "Jamie Example"
+        ],
+        "estate_reference": [
+          "EST-47"
+        ]
+      }
+    },
+    {
+      "id": "inheritance-aliases",
+      "matter_type": "inheritance",
+      "text": "Verstorbene: Ella Muster\nErbin: Anne Beispiel\nNachlassaktenzeichen: 14-VI-2026",
+      "expected": {
+        "deceased_name": [
+          "Ella Muster"
+        ],
+        "heir_name": [
+          "Anne Beispiel"
+        ],
+        "estate_reference": [
+          "14-VI-2026"
+        ]
+      }
+    },
+    {
+      "id": "inheritance-conflict",
+      "matter_type": "inheritance",
+      "text": "Erbe: Kim Beispiel\nErbe: Sam Muster\nNachlassakte: SYN-11",
+      "expected": {
+        "heir_name": [
+          "Kim Beispiel",
+          "Sam Muster"
+        ],
+        "estate_reference": [
+          "SYN-11"
+        ]
+      }
+    },
+    {
+      "id": "inheritance-empty",
+      "matter_type": "inheritance",
+      "text": "No deceased person or heirs are identified in this cover sheet.",
+      "expected": {}
+    },
+    {
+      "id": "inheritance-wrong-schema",
+      "matter_type": "inheritance",
+      "text": "Buyer: Nora Sample\nSeller: Liam Example\nErblasserin: Ada Fiktiv",
+      "expected": {
+        "deceased_name": [
+          "Ada Fiktiv"
+        ]
+      }
+    },
+    {
+      "id": "company-de",
+      "matter_type": "company_formation",
+      "text": "Firma: Beispielwerk GmbH\nGründer: Luis Muster\nSitz der Gesellschaft: Testallee 8, Berlin\nTermin: 05.12.2026",
+      "expected": {
+        "company_name": [
+          "Beispielwerk GmbH"
+        ],
+        "founder_name": [
+          "Luis Muster"
+        ],
+        "registered_address": [
+          "Testallee 8, Berlin"
+        ],
+        "appointment_date": [
+          "05.12.2026"
+        ]
+      }
+    },
+    {
+      "id": "company-en",
+      "matter_type": "company_formation",
+      "text": "Company name: Example Workshop Ltd\nFounder: Mika Sample\nRegistered address: 21 Sample Road",
+      "expected": {
+        "company_name": [
+          "Example Workshop Ltd"
+        ],
+        "founder_name": [
+          "Mika Sample"
+        ],
+        "registered_address": [
+          "21 Sample Road"
+        ]
+      }
+    },
+    {
+      "id": "company-transliteration",
+      "matter_type": "company_formation",
+      "text": "Gesellschaftsname: Musterlabor UG\nGruenderin: Nina Beispiel\nGeschaeftssitz: Testgasse 6",
+      "expected": {
+        "company_name": [
+          "Musterlabor UG"
+        ],
+        "founder_name": [
+          "Nina Beispiel"
+        ],
+        "registered_address": [
+          "Testgasse 6"
+        ]
+      }
+    },
+    {
+      "id": "company-conflict",
+      "matter_type": "company_formation",
+      "text": "Firma: Muster AG\nFirma: Muster GmbH\nGründerin: Tara Beispiel",
+      "expected": {
+        "company_name": [
+          "Muster AG",
+          "Muster GmbH"
+        ],
+        "founder_name": [
+          "Tara Beispiel"
+        ]
+      }
+    },
+    {
+      "id": "company-empty",
+      "matter_type": "company_formation",
+      "text": "The formation is under discussion. Neither a founder nor a registered address is named.",
+      "expected": {}
+    },
+    {
+      "id": "company-wrong-schema",
+      "matter_type": "company_formation",
+      "text": "Erbe: Not Applicable\nKäufer: Not Applicable\nGeschäftssitz: Fiktivring 2",
+      "expected": {
+        "registered_address": [
+          "Fiktivring 2"
+        ]
+      }
+    },
+    {
+      "id": "general-de",
+      "matter_type": "general",
+      "text": "Mandantin: Eva Beispiel\nAktenzeichen: SYN-2026-29\nTermin: 15.11.2026",
+      "expected": {
+        "client_name": [
+          "Eva Beispiel"
+        ],
+        "matter_reference": [
+          "SYN-2026-29"
+        ],
+        "appointment_date": [
+          "15.11.2026"
+        ]
+      }
+    },
+    {
+      "id": "general-en",
+      "matter_type": "general",
+      "text": "Client name: Riley Example\nMatter reference: SYN-GEN-18\nAppointment date: 2026-12-02",
+      "expected": {
+        "client_name": [
+          "Riley Example"
+        ],
+        "matter_reference": [
+          "SYN-GEN-18"
+        ],
+        "appointment_date": [
+          "2026-12-02"
+        ]
+      }
+    },
+    {
+      "id": "general-conflict",
+      "matter_type": "general",
+      "text": "Mandant: Tom Muster\nMandant: Theo Beispiel\nAktenzeichen: GEN-46",
+      "expected": {
+        "client_name": [
+          "Tom Muster",
+          "Theo Beispiel"
+        ],
+        "matter_reference": [
+          "GEN-46"
+        ]
+      }
+    },
+    {
+      "id": "general-empty",
+      "matter_type": "general",
+      "text": "A synthetic cover note without named parties, references or dates.",
+      "expected": {}
+    },
+    {
+      "id": "general-unicode",
+      "matter_type": "general",
+      "text": "Mandant: José Fiktiv\nAktenzeichen: SYN-Ü-12",
+      "expected": {
+        "client_name": [
+          "José Fiktiv"
+        ],
+        "matter_reference": [
+          "SYN-Ü-12"
+        ]
+      }
+    },
+    {
+      "id": "general-boundaries",
+      "matter_type": "general",
+      "text": "NichtMandant: ignored\nAktenzeichenOther: ignored\nClient name: Noor Sample",
+      "expected": {
+        "client_name": [
+          "Noor Sample"
+        ]
+      }
+    }
+  ]
+}

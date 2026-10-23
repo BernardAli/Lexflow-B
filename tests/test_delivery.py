@@ -124,3 +124,22 @@ def test_retries_cannot_silently_switch_destination(admin, monkeypatch):
     assert admin.post('/api/integrations/transfers', json=data).json()['status'] == 'uncertain'
     monkeypatch.setenv('LEXFLOW_WEBHOOK_TARGETS', json.dumps({'tenant-keller-demo':{'url':'https://other.example.test/import','secret':'s'*40}}))
     assert admin.post('/api/integrations/transfers', json=data).status_code == 409
+
+
+def test_late_receipt_preserves_a_newer_approval_and_marks_original_payload_superseded(admin, monkeypatch):
+    monkeypatch.setenv('LEXFLOW_WEBHOOK_TARGETS', json.dumps({'tenant-keller-demo':{'url':'https://destination.example.test/import','secret':'s'*40}}))
+    data = transfer_data(admin, connector='webhook')
+    def send(*args):
+        # Simulate a process pause beyond its lease, followed by renewed review.
+        with db(write=True) as conn:
+            conn.execute('UPDATE integration_jobs SET lease_until=0')
+        assert admin.post('/api/matters/'+data['matter_id']+'/reopen').status_code == 200
+        assert admin.post('/api/matters/'+data['matter_id']+'/fields/buyer_name/confirm', json={'value':'Updated Synthetic Buyer','note':'Newer review'}).status_code == 200
+        assert admin.post('/api/matters/'+data['matter_id']+'/approve').status_code == 200
+        return 'accepted', {'receipt_id':'late-original-acceptance'}
+    monkeypatch.setattr(integrations, 'send_webhook', send)
+    result = admin.post('/api/integrations/transfers', json=data).json()
+    assert result['status'] == 'accepted' and result['superseded'] is True
+    detail = admin.get('/api/matters/'+data['matter_id']).json()
+    assert detail['matter']['status'] == 'approved'
+    assert next(field for field in detail['fields'] if field['key']=='buyer_name')['value'] == 'Updated Synthetic Buyer'

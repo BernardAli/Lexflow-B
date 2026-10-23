@@ -23,10 +23,10 @@ def audit_key():
     return key
 
 
-def sign(row, position, previous):
+def sign(row, position, previous, key=None):
     data = json.dumps({"event": dict(row), "position": position, "previous": previous},
                       sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-    return hmac.new(audit_key(), data, hashlib.sha256).hexdigest()
+    return hmac.new(key if key is not None else audit_key(), data, hashlib.sha256).hexdigest()
 
 
 def seal_event(conn, event_id):
@@ -49,13 +49,13 @@ def migrate_integrity():
         conn.execute("INSERT INTO schema_migrations VALUES('audit-chain-v1')")
 
 
-def verify_integrity(conn, tenant):
+def verify_integrity(conn, tenant, key=None):
     events = conn.execute("SELECT * FROM audit WHERE tenant_id=? ORDER BY rowid", (tenant,)).fetchall()
     position, previous = 0, "0" * 64
     for row in events:
         position += 1
         seal = conn.execute("SELECT * FROM audit_integrity WHERE audit_id=?", (row["id"],)).fetchone()
-        expected = sign(row, position, previous)
+        expected = sign(row, position, previous, key=key)
         if (not seal or seal["tenant_id"] != tenant or seal["position"] != position
                 or seal["previous_hash"] != previous or not hmac.compare_digest(expected, seal["signature"])):
             return {"valid": False, "checked_events": position, "failed_event": row["id"]}

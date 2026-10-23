@@ -90,6 +90,7 @@ Create an untracked `.env.hardened` in the project root, with a DNS name that po
 ```dotenv
 LEXFLOW_DOMAIN=lexflow.example.com
 LEXFLOW_AUDIT_KEY=replace-with-at-least-32-random-characters
+LEXFLOW_MFA_KEY=replace-with-a-separately-generated-Fernet-key
 LEXFLOW_STORAGE_KEYS='{"office-1":["replace-with-a-Fernet-key"]}'
 LEXFLOW_RESET_DELIVERY=disabled
 ```
@@ -108,7 +109,7 @@ Provisioning prompts for a new 12–128 character password and refuses to overwr
 
 Caddy handles certificate issuance for the configured DNS name; port 80/443 access and working DNS are prerequisites. The configuration follows the official [Caddy reverse-proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy) and [request body limit](https://caddyserver.com/docs/caddyfile/directives/request_body) documentation. The supplied image uses [Caddy 2.11.7](https://github.com/caddyserver/caddy/releases/tag/v2.11.7). Docker/ACME execution was not available in this development environment; validate the full stack, image digest, DNS, certificate renewal, network range and restore procedure in your deployment environment before use.
 
-This profile adds controls; it does not implement SSO/MFA, a managed cloud service, regulatory certification, or database-at-rest encryption. Use a separately encrypted data volume and backup destination, least-privilege infrastructure access, and an independently reviewed operating policy.
+This profile adds controls; it includes authenticator-app MFA and mandatory enrollment, but does not implement SSO, a managed cloud service, regulatory certification, or database-at-rest encryption. Use a separately encrypted data volume and backup destination, least-privilege infrastructure access, and an independently reviewed operating policy.
 
 ## File encryption and key rotation
 
@@ -135,7 +136,16 @@ Use the Security page to inspect verification and download a checkpoint, or run:
 
 The snapshot uses SQLite's online backup API while holding an application write lock and copies document/export files consistently. It refuses an existing destination or a destination inside active data. Local fallback signing keys are copied for demo recovery; external encryption and signing keys are **not** included. Put backups and checkpoints in separately protected storage. A chain detects changed/interior missing events; a trusted external checkpoint is required to detect coordinated truncation of both history and its local head.
 
-For a restore drill, stop the target instance, preserve its current volume, copy the snapshot's database and upload/export directories into an empty replacement data directory/volume, restore the correct external keys, and run `verify-audit`. Start an isolated instance against that directory and verify an authenticated document download before switching traffic. Never overwrite a running instance's SQLite database. Snapshot absolute artifact paths must match the restored data path: use the same `/data` container mount or preserve the original `LEXFLOW_DATA_DIR` path. Backup/restore under a different path needs explicit path relocation before serving files.
+Snapshots use a versioned HMAC-authenticated file manifest. Verification checks exact file membership, SHA-256 checksums, SQLite integrity/foreign keys, every workspace audit chain, original document hashes, encrypted exports, identity-bound MFA secrets and the demo destination's encrypted payloads. The local demo's fallback keys are included in its protected snapshot directory; keep this entire directory private. For stronger separation, inject an external audit key and retain it independently. Any configured external storage, audit and MFA keys must be supplied unchanged during verification and restore.
+
+```bash
+.venv-demo/bin/python -m lexflow.manage verify-backup /secure-backups/lexflow-snapshot-2026-10-23
+.venv-demo/bin/python -m lexflow.manage restore /secure-backups/lexflow-snapshot-2026-10-23 /new-volume/lexflow-restored
+```
+
+Restore refuses an existing target, verifies the copied snapshot, rebases artifact paths to the replacement directory, revokes all sessions/reset links/MFA challenges and clears abandoned delivery leases. It preserves enrolled factors, unused recovery codes, audit history and transfer keys. A restore receipt records the source checkpoint. The snapshot can be moved before restoration. This tool accepts v2 authenticated snapshots; retain older snapshots with their matching software for recovery.
+
+For a drill, stop the target instance and preserve its old volume. Restore to a new directory, start an isolated instance with `LEXFLOW_DATA_DIR` pointing there and the original external keys injected, then verify login, the audit checkpoint and an authenticated document download before switching traffic. For containers, run restore where its destination path matches the final mount path, such as `/data`; ensure the application user owns that volume. Never overwrite a running instance's database. A snapshot coordinates LexFlow writes and independently captures the demo destination; a transfer in flight can require same-key reconciliation after restore.
 
 ## Folder intake agent and HTTPS destination
 
@@ -145,7 +155,7 @@ For a controlled local demonstration:
 .venv-demo/bin/python agents/folder_agent.py /path/to/inbox --url http://127.0.0.1:8001 --email admin@keller.demo --matter YOUR_MATTER_ID
 ```
 
-The agent prompts for a password, authenticates using session/CSRF controls, sends one file per request, and keeps original files. `LEXFLOW_AGENT_PASSWORD` supports supervised automation without putting a password in arguments. Add `--watch` to scan every five seconds. The agent reads the top-level folder, skips symlinks/unsupported files, checks size/mtime around reads and uses stable content keys. Prefer writing to a temporary name and atomically renaming complete files into the inbox; stable metadata alone cannot prove a scanner finished writing. Repeated content with the same file name and matter replays its intake receipt. A changed file becomes new evidence and invalidates prior reviews normally. Only loopback HTTP or verified HTTPS origins are permitted. Session expiry causes reauthentication and retry with the same key.
+The agent prompts for a password and, when enrolled, an authenticator or unused recovery code, authenticates using session/CSRF controls, sends one file per request, and keeps original files. `LEXFLOW_AGENT_PASSWORD` supports supervised automation without putting a password in arguments. Add `--watch` to scan every five seconds. The agent reads the top-level folder, skips symlinks/unsupported files, checks size/mtime around reads and uses stable content keys. Prefer writing to a temporary name and atomically renaming complete files into the inbox; stable metadata alone cannot prove a scanner finished writing. Repeated content with the same file name and matter replays its intake receipt. A changed file becomes new evidence and invalidates prior reviews normally. Only loopback HTTP or verified HTTPS origins are permitted. Session expiry causes reauthentication and retry with the same key.
 
 To enable a supported generic destination, set `LEXFLOW_WEBHOOK_TARGETS` to a JSON workspace map:
 
@@ -154,3 +164,21 @@ LEXFLOW_WEBHOOK_TARGETS='{"office-1":{"url":"https://receiver.example.com/import
 ```
 
 The operator must authorize that destination for its workspace. See the request signature, acknowledgment and idempotency contract in `docs/API.md`. The local demonstration receiver works without this setting. No vendor-specific integration or Outlook/Word add-in is implied.
+
+## Authenticator MFA
+
+In **Settings → My account**, choose **Set up authenticator**, confirm the current password, enter the displayed key into an authenticator app and confirm a six-digit code. Save the ten recovery codes privately; each works once. Codes and secrets never enter audit records or browser storage. Replacing recovery codes or disabling an optional factor requires the password plus a current factor; both actions revoke other sessions. Password recovery preserves an enrolled factor.
+
+TOTP follows [RFC 6238](https://datatracker.ietf.org/doc/html/rfc6238), with 30-second steps, a one-step clock window and replay prevention. Sign-in challenges expire after five minutes and allow five attempts; setup expires after ten minutes. Rate counters persist. Synchronize the host clock. The hardened profile requires `LEXFLOW_MFA_KEY` (a separate Fernet key) and mandatory enrollment before case access; disabling that policy or the factor is refused. Demo deployments use a protected local fallback key and make enrollment optional unless `LEXFLOW_REQUIRE_MFA=1`. SSO, managed factor recovery and automated key rotation remain future work.
+
+## NotaryDesk Demo and durable delivery
+
+With demo seeding on, NotaryDesk Demo starts automatically as a separate loopback TLS server and encrypted SQLite store under `data/demo_notary/`. No third-party account is required. Use **Integrations → NotaryDesk Demo (HTTPS)**, dry-run an approved matter, send it, then open **Open demo notary**. Case details and delivery evidence have separate keyboard-accessible tabs. Reviewers/admins can move cases through Received, In preparation and Ready for review; analysts can read them. Workspace scoping and revision checks apply at the destination. This is a fictional product and does not notarize documents. Set `LEXFLOW_DEMO_NOTARY=0` to disable it. It is unavailable without demo seeding and rejected if explicitly enabled in a hardened profile.
+
+Delivery commits an immutable payload intent and destination binding before contacting the receiver. A 120-second lease protects the approved matter while the 10-second network call runs without holding the SQLite writer lock. Completed acceptance replays the stored receipt. The receiver independently commits before acknowledging and deduplicates workspace/key pairs. NotaryDesk authenticates response signatures and binds its receipt to the key and payload hash. To recover an unsent or abandoned intent after a restart:
+
+```bash
+.venv-demo/bin/python -m lexflow.manage deliver-pending --limit 20
+```
+
+Run with the same data directory and keys as the application. The command resumes pending/expired sends using their original keys and rechecks approval, actor access and destination identity. It cancels stale intents. Uncertain outcomes require inspection of the destination and an explicit **Retry same key** in Integrations. Do not switch destinations or invent a new key to hide an uncertain prior outcome. No background worker is installed; schedule supervised recovery in your operating environment if needed.

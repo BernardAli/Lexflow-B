@@ -5,12 +5,15 @@ services:
     environment:
       LEXFLOW_SECURITY_PROFILE: hardened
       LEXFLOW_SEED_DEMO: "0"
+      LEXFLOW_DEMO_NOTARY: "0"
+      LEXFLOW_REQUIRE_MFA: "1"
       LEXFLOW_SECURE_COOKIES: "1"
       LEXFLOW_RESET_DELIVERY: ${LEXFLOW_RESET_DELIVERY:-disabled}
       LEXFLOW_PUBLIC_URL: https://${LEXFLOW_DOMAIN:?Set LEXFLOW_DOMAIN}
       LEXFLOW_ALLOWED_HOSTS: ${LEXFLOW_DOMAIN},127.0.0.1
       LEXFLOW_DATA_DIR: /data
       LEXFLOW_AUDIT_KEY: ${LEXFLOW_AUDIT_KEY:?Set a 32+ character audit key}
+      LEXFLOW_MFA_KEY: ${LEXFLOW_MFA_KEY:?Set a separate Fernet key for authenticator secrets}
       LEXFLOW_STORAGE_KEYS: ${LEXFLOW_STORAGE_KEYS:?Set workspace encryption key rings}
       LEXFLOW_WEBHOOK_TARGETS: ${LEXFLOW_WEBHOOK_TARGETS:-}
       LEXFLOW_SMTP_HOST: ${LEXFLOW_SMTP_HOST:-}

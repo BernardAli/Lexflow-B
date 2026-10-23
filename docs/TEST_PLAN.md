@@ -92,4 +92,20 @@ Tests create isolated temporary data directories, leaving your running demo envi
 
 Python 3.12 is the tested demo runtime. Interface checks use jsdom and Node.js; they do not replace a graphical browser walkthrough. OCR tests mock recognition so they run without installing Tesseract. SMTP tests mock both TLS transports and never send email. Password reset tests cover all demo roles, concurrent redemption, expiration, replay, session revocation, account boundaries, password-change invalidation, private errors and rate limits. Docker execution and Windows PowerShell launch require their respective platforms.
 
-The new workspaces were also exercised end-to-end in Chromium at widths 320, 390, 768 and 1440 pixels, checking visible text at least 12px, text contrast and horizontal overflow. The real folder agent was run against a temporary HTTP server twice to verify receipt replay. Docker execution, Caddy/ACME and live third-party SMTP/webhook destinations were not available; transports are mocked in automated checks.
+The earlier workspaces were also exercised end-to-end in Chromium at widths 320, 390, 768 and 1440 pixels, checking visible text at least 12px, text contrast and horizontal overflow. The real folder agent was run against a temporary HTTP server twice to verify receipt replay. Docker execution, Caddy/ACME and live third-party SMTP/webhook destinations were not available; third-party transports are mocked in automated checks.
+
+## 0.11.0 release verification — 2026-10-23
+
+**111 backend tests and 21 interface tests passed.** Dependency compatibility and JavaScript syntax checks pass. The complete 125-view tab/browser regression was repeated, followed by 16 checks of the new destination and MFA screens at 320, 390, 768, 1440 and 1920 pixels. No script errors or horizontal page overflow were observed; visible text is at least 12px.
+
+| Area | Evidence |
+|---|---|
+| Authenticator MFA | RFC test vectors, encrypted identity binding, required enrollment, replay/window/expiry controls, bounded challenge attempts, session revocation and password-reset factor preservation |
+| Recovery | Hashed single-use codes, code replacement, mandatory-policy enforcement, inline invalid proof and browser recovery sign-in with decremented remaining count |
+| NotaryDesk Demo | Actual certificate-verified local HTTPS, signed request/receipt, independently encrypted destination case, duplicate prevention, stage revisions, tenant scoping and analyst restrictions |
+| Delivery recovery | Crash simulated after destination commit; expired lease resumes the original key without another case. Unrelated writers proceed during network I/O; approval-invalidating writes return 409 |
+| Portable restore | Moved snapshot, encrypted artifacts, original-document hash, MFA secret, audit chain, destination case, session/reset revocation and authenticated restored download |
+| Snapshot rejection | Modified/missing/extra files, symlinks, altered manifest, wrong external key, unsafe database paths and existing restore destinations are rejected |
+| Extraction | 28 versioned synthetic cases across four schemas, negative/empty labels, aliases, duplicate normalization and conflicting values. Two damaged labels remain documented misses |
+
+Run `python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95`. The committed report records 100% precision, 97.2% recall and 98.6% micro F1 on this small synthetic text set. It does not measure OCR, external AI, legal correctness or representative office performance. CI is configured for pushes and pull requests; a hosted run has not been claimed. Docker, external SMTP and an actual vendor destination still require target-environment validation.
