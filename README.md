@@ -5,6 +5,23 @@
 
 LexFlow is a **runnable, interactive local web application**, based on the supplied "LexFlow AI — Secure AI Workflow Automation" client concept deck. It demonstrates a real end-to-end workflow from document intake to reviewed, approved, downloadable structured data. It is **not just a clickable design**; it includes a database, authenticated API, document parsers, extraction logic, reviewer actions, audit records, and two separate demo workspaces.
 
+## Documentation
+
+| Document | Use it for |
+|---|---|
+| [Demonstration guide (12-page PDF)](docs/LexFlow_AI_Demonstration_Guide.pdf) | Presenter steps, sample values, screenshots, NotaryDesk Demo and MFA |
+| [Presentation video (1080p MP4)](docs/LexFlow_AI_Presentation.mp4) | 4:04 narrated overview, visible English captions and 12 chapters |
+| [Video player and transcript](docs/LexFlow_AI_Presentation.html) | Watch with chapter navigation, read the narration and download captions |
+| [Deployment and recovery](docs/DEPLOYMENT.md) | Configuration, MFA policy, provisioning, backups, restore and transfer recovery |
+| [API reference](docs/API.md) | Authentication, roles, requests, delivery signatures and receipt contracts |
+| [Architecture](docs/ARCHITECTURE.md) | Modules, stores, review state and delivery flow |
+| [Verification checklist](docs/TEST_PLAN.md) | Release evidence, automated commands and manual scenarios |
+| [Security and limitations](docs/SECURITY_AND_LIMITATIONS.md) | Implemented controls and remaining deployment boundaries |
+| [Product roadmap](docs/PRODUCT_ROADMAP.md) | Delivered v0.11 features and remaining customer-pilot milestones |
+| [Changelog](CHANGELOG.md) | Version history |
+
+The presentation video is adapted from the current guide, with local synthetic English narration and the guide's synthetic screenshots. Download the MP4 or open the HTML player beside it; the full narration transcript is available in the player. [Video build instructions](docs/TEST_PLAN.md#rebuilding-the-presentation-video) describe how to update the script, slides and captions.
+
 > **IMPORTANT — NOT A PRODUCTION NOTARIAL SYSTEM.** The default accounts use publicly documented test passwords. Upload only synthetic or fully sanitized documents. Actual German notarial deployments need specialist legal/privacy review, security engineering, integration agreements and additional controls (see `docs/SECURITY_AND_LIMITATIONS.md`). No BNotK/XNP or vendor system is preconnected. File exports remain local; an explicitly configured HTTPS webhook can transmit approved data to an authorized destination.
 
 ## Start in under 5 minutes
@@ -63,7 +80,7 @@ API reference is available at **http://127.0.0.1:8000/docs**.
 |---|---|---|
 | Workspace admin | `admin@keller.demo` | `LexFlowDemo2026!` |
 | Reviewer | `reviewer@keller.demo` | `LexFlowDemo2026!` |
-| Analyst (read-only approval) | `assistant@keller.demo` | `LexFlowDemo2026!` |
+| Analyst (intake and read access) | `assistant@keller.demo` | `LexFlowDemo2026!` |
 | Second independent workspace | `admin@weber.demo` | `LexFlowDemo2026!` |
 
 **The login screen is prefilled with demo credentials.** These are shared development-only credentials and must never be used to secure real client documents.
@@ -74,6 +91,8 @@ Click **Forgot password?** on the sign-in screen, enter a demo account email, th
 
 Reset links expire after 30 minutes, work once, and are replaced by newer requests. Resetting a password closes all sessions for that account. Only token hashes are stored, and reset requests and completions are recorded in the workspace audit trail. Both recovery endpoints have rate limits.
 
+If the account has MFA enabled, password recovery preserves it: the next sign-in still needs an authenticator code or unused recovery code. Set up or manage the factor in **Settings → My account**. The hardened deployment requires enrollment before case access.
+
 On-screen links are limited to the four seeded synthetic accounts. With demo seeding disabled, recovery defaults to disabled until SMTP is configured. Optional TLS-protected email delivery is documented in [the deployment guide](docs/DEPLOYMENT.md#password-reset-delivery).
 
 ## Four additional workspaces
@@ -81,13 +100,13 @@ On-screen links are limited to the four seeded synthetic accounts. With demo see
 - **Workflow studio:** test a literal document label, save a workspace-specific versioned rule and use it on future intake. Reviewers can preview; administrators save and pause rules. Select source text and choose **Teach a field** to start from a document. Example text is never stored in rule configuration.
 - **Integrations:** send approved data to **NotaryDesk Demo**, a fictional case-management workspace with a separate encrypted case store, verified TLS, signed receipts and preparation stages. The simpler local receiver is also available. An optional signed HTTPS webhook supports an explicitly configured destination. A working folder intake agent is included in `agents/folder_agent.py`.
 - **Security:** inspect session/cookie/encryption controls, revoke other sessions, verify HMAC audit chains and export checkpoints. A dedicated HTTPS deployment profile, operator provisioning, consistent snapshots and artifact-key rotation are included.
-- **Pilot measurement:** record an observed baseline, record work sessions or use a matter timer, inspect extraction/correction/low-confidence/audit rates, and export CSV evidence. Each metric explains its denominator; simulated transfer rates remain separate from HTTPS results. No measured time savings are invented.
+- **Pilot measurement:** record an observed baseline, record work sessions or use a matter timer, inspect extraction/correction/low-confidence/audit rates, and export CSV evidence. Acceptance rates are separate for the local receiver, fictional NotaryDesk over HTTPS and a configured HTTPS destination. No measured time savings are invented.
 
 The default local demo still runs without external accounts or services. See [deployment and operator commands](docs/DEPLOYMENT.md), [API contracts](docs/API.md), and [remaining security boundaries](docs/SECURITY_AND_LIMITATIONS.md). Native Outlook/Word and real notary-vendor integrations remain outside the supplied implementation.
 
 Related sections use tabs in Overview, matters, intake, exports, integrations, pilot measurement, security and settings. Use the arrow keys, Home and End to move between tabs. Switching tabs preserves form drafts, selected files and transfer previews. Selection is remembered during page updates and cleared on sign-out. In Pilot measurement, use **Record measurements** to enter baselines and work sessions; in Settings, use **My account** to change your password or set up an authenticator app.
 
-## Guided demonstration in about three minutes
+## Guided demonstration in about 10–15 minutes
 
 1. Sign in as `admin@keller.demo`.
 2. Click **Start guided demo** on the dashboard. Each click creates a fresh synthetic matter, so the demonstration is repeatable.
@@ -96,8 +115,8 @@ Related sections use tabs in Overview, matters, intake, exports, integrations, p
 5. Click **Review field** under *Land register*, inspect both source suggestions, select a value, and click **Confirm value**. Do the same for the other *required* fields.
 6. When all required fields are confirmed, click **Approve matter**.
 7. Click **Export approved data**, choose JSON or CSV, inspect the mapped payload, and generate a downloadable file.
-8. Open **Integrations**, choose **NotaryDesk Demo (HTTPS)**, run **Dry run**, then **Send approved data**.
-9. Click **Open demo notary**, inspect the received case and delivery evidence, and change its stage to **In preparation**.
+8. Open **Integrations → Send approved data**, select that matter and **NotaryDesk Demo (HTTPS)**, run **Dry run**, then **Send approved data**.
+9. Click **Open demo notary**, select the received case, open its **Delivery evidence** tab, then use **Case details** to change the stage to **In preparation** and save it.
 10. Check **Audit trail** and **Pilot measurement** to inspect recorded actions and measured outcomes.
 
 ### Test creation from scratch
@@ -116,7 +135,7 @@ All sample names, financial amounts, addresses and identifiers are **invented** 
 |---|---|---|
 | Multi-workspace isolation | **Yes** | Every matter, document, candidate, audit event and export is scoped to an authenticated tenant |
 | Role-based access | **Yes** | Admin, reviewer and analyst; reviewer/admin required to confirm, approve and export |
-| Secure demo sessions | **Yes, demo-grade** | Argon2 password hashing, HttpOnly SameSite cookies, CSRF protection, 12-hour sessions |
+| Sessions and authenticator MFA | **Yes** | Argon2 passwords, throttling, CSRF, 12-hour absolute / 30-minute idle expiry; optional demo MFA and mandatory hardened enrollment |
 | Dashboard and case management | **Yes** | Case lists, search/filter, statuses, review queue, pipeline counters |
 | PDF, Word, text and email intake | **Yes** | PDF, DOCX, TXT, EML with HTML bodies and supported attachments; atomic batches of up to 6 files |
 | Scan and image intake | **Yes, optional OCR** | PNG/JPG and multipage TIFF; OCR checked per PDF page, with explicit limits and warnings |
@@ -128,7 +147,11 @@ All sample names, financial amounts, addresses and identifiers are **invented** 
 | Approval gate | **Yes** | Requires confirmed, valid mandatory fields and resolution of every conflict, including optional fields |
 | Connector mappings | **Yes** | Admin-configurable, unique destination names; changed mappings require renewed approval |
 | Approved JSON / CSV export | **Yes** | Generated downloadable files with source matter and destination mapping |
-| Notary connector simulator | **Yes, mock only** | Creates export files that mimic a possible mapped handoff — no external write |
+| Notary file-export profile | **Yes** | `notary_demo` generates a local mapped file |
+| NotaryDesk Demo destination | **Yes, fictional** | `demo_notary` sends over verified local TLS to a separate encrypted case store, with signed receipts and revision-checked stages |
+| Durable transfer intents | **Yes** | Approval-bound previews, destination binding, leases and same-key crash recovery; HTTP I/O releases the SQLite writer lock |
+| Backup and portable restore | **Yes** | Authenticated manifest, artifact/audit checks, relocated paths and revoked sessions on restore |
+| Evaluation and release checks | **Yes** | Versioned synthetic extraction dataset/report and CI for backend/UI tests, dependency checks and benchmark |
 | Audit history | **Yes, demo-grade** | Previous/new corrections, source selections, full notes, review invalidations and mapping changes |
 | Third-party notarial integrations | **No** | Requires vendor authorization and a supported real interface |
 | Native Outlook/Word add-ins | **No** | The browser-based intake UI works; production add-ins are a roadmap item |
@@ -139,19 +162,37 @@ All sample names, financial amounts, addresses and identifiers are **invented** 
 ```text
 lexflow_ai_prototype/
 ├── lexflow/
-│   ├── main.py             # API routes, workflows, review gate, exports
+│   ├── main.py             # App lifecycle, intake and matter routes
+│   ├── matter_service.py   # Shared fields, review gate and export invariants
 │   ├── db.py               # SQLite schema, transactions and audit
 │   ├── auth.py             # Passwords, session auth, CSRF and roles
+│   ├── mfa.py              # Authenticator enrollment, challenges and recovery codes
+│   ├── password_reset.py   # Reset tokens, demo/SMTP delivery and rate limits
 │   ├── extraction.py       # German notarial field schemas / local rules / optional AI
 │   ├── documents.py        # PDF, DOCX, EML, TXT, image parsing and OCR
 │   ├── exporter.py         # Approved mapping and CSV/JSON generator
+│   ├── workflows.py        # Tenant-scoped, versioned label rules
+│   ├── integrations.py     # Dry runs, transfers and agent intake adapter
+│   ├── delivery.py         # Durable intents, bounded leases and recovery
+│   ├── demo_notary.py      # Fictional TLS receiver, case store and proxy
+│   ├── pilot.py            # Baselines, observations and defined metrics
+│   ├── security.py         # Deployment policy, throttling and security status
+│   ├── storage.py          # Workspace artifact encryption and key rings
+│   ├── integrity.py        # Audit HMAC chains and checkpoints
+│   ├── snapshots.py        # Authenticated snapshots and portable restore
+│   ├── manage.py           # Operator commands
+│   ├── benchmark.py        # Offline ground-truth evaluation CLI
 │   ├── seed.py             # Synthetic multi-tenant demo fixtures
 │   └── settings.py         # Environment configuration
-├── static/                  # Fully offline-capable web UI (HTML/CSS/JS)
+├── static/                  # LexFlow UI and separate NotaryDesk browser entry point
+├── agents/                  # Authenticated folder intake client
+├── evaluations/             # Synthetic ground truth and recorded benchmark report
 ├── samples/                 # 8 synthetic text / email / PDF / Word examples
 ├── tests/                   # Automated API and workflow tests
-├── docs/                    # Architecture, security, deployment and roadmap
-├── data/                    # Local database & uploads (generated on first run)
+├── docs/                    # Guides, PDF, reproducible PDF source and screenshots
+├── deploy/                  # Dedicated HTTPS Compose profile and proxy config
+├── .github/workflows/       # CI release checks
+├── data/                    # Generated DB, files, local demo keys and destination store
 ├── Dockerfile / docker-compose.yml
 ├── start.sh / start.ps1
 ├── .env.example
@@ -160,40 +201,51 @@ lexflow_ai_prototype/
 
 ## Configuration
 
-All variables are optional unless you enable external AI.
+The demo runs with defaults. The hardened profile requires explicit hosts, an HTTPS origin, external audit/storage/MFA keys, disabled demo seeding and secure cookies. See the [deployment configuration reference](docs/DEPLOYMENT.md#configuration-reference).
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `LEXFLOW_DATA_DIR` | `./data` | Local SQLite database, uploads and exports |
 | `LEXFLOW_SEED_DEMO` | `1` | Load sample accounts and matters on first initialization |
+| `LEXFLOW_DEMO_NOTARY` | `1` | Start fictional NotaryDesk; also requires demo seeding |
+| `LEXFLOW_REQUIRE_MFA` | `0` in demo, `1` in hardened | Require factor enrollment before case access |
+| `LEXFLOW_MFA_KEY` | local fallback in demo | Fernet key for authenticator secrets; external key required in hardened |
+| `LEXFLOW_SECURITY_PROFILE` | `demo` | Choose demo or hardened deployment policy |
+| `LEXFLOW_IDLE_MINUTES` | `30` | Inactivity timeout, from 1 to 720 minutes |
 | `LEXFLOW_MAX_UPLOAD_MB` | `12` | Maximum size per uploaded file |
-| `LEXFLOW_SECURE_COOKIES` | `0` | Switch to `1` behind HTTPS only; local HTTP demo uses `0` |
+| `LEXFLOW_SECURE_COOKIES` | `0` in demo, `1` in hardened | HTTPS-only session cookies |
+| `LEXFLOW_AUDIT_KEY` | local fallback in demo | External audit/manifest signing key required in hardened |
+| `LEXFLOW_STORAGE_KEYS` | unset | Workspace Fernet key rings for original files and exports |
+| `LEXFLOW_WEBHOOK_TARGETS` | unset | Workspace HTTPS destination URLs and signing secrets |
+| `LEXFLOW_RESET_DELIVERY` | `demo` when seeded, otherwise `disabled` | Demo links, TLS SMTP or disabled recovery |
 | `LEXFLOW_ALLOW_EXTERNAL_AI` | `0` | Explicitly allow optional third-party AI processing |
 | `OPENAI_API_KEY` | unset | Required if external AI processing is enabled |
 | `OPENAI_MODEL` | `gpt-4.1-mini` | Configured OpenAI model for optional enrichment |
 
 External AI runs **only** when all three conditions hold: (1) server has `LEXFLOW_ALLOW_EXTERNAL_AI=1`, (2) a valid `OPENAI_API_KEY` exists, and (3) a user opts in for that particular intake. The provider then receives document text; do **not** enable it for confidential client information without a legally reviewed data-processing arrangement and acceptable regional controls. When not configured, all extraction runs locally with deterministic rules, not a large-language model.
 
-If using `.env.example` as a guide, note that the Docker Compose file forwards these variables; `start.sh` and `start.ps1` also load `.env` if present. See `docs/DEPLOYMENT.md`.
+`start.sh` and `start.ps1` load a local `.env`. Manual Python/CLI commands use their process environment and do not load that file. Docker Compose forwards only explicitly listed variables; use the documented [demo Compose override](docs/DEPLOYMENT.md#docker) for the newer demo MFA/notary controls, or the supplied hardened stack for mandatory MFA.
 
 ## Run quality checks
 
 ```bash
 python -m pytest -q
-python -m compileall -q lexflow
+python -m compileall -q lexflow agents
+python -m pip check
 
 # Optional interface regression checks (Node.js development tools only)
 npm ci
 npm run test:ui
+python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95
 ```
 
-The tests cover login, tenant separation, roles, CSRF, optional conflicts, value validation, complete correction history, batch rollback, email attachments, mixed PDFs, TIFF frames, export invalidation, and the repeatable demo. OCR tests substitute the OCR engine; recognition quality requires local Tesseract. `constraints.txt` pins the tested Python dependencies; the browser application has no runtime JavaScript dependencies.
+The v0.11 release passed **111 backend tests and 21 UI tests**, plus **141 Chromium page/panel checks** across five widths. Coverage includes MFA, recovery codes, signed local TLS delivery, crash recovery, tenant/role boundaries, portable restore, snapshot tampering and the core intake/review/export flow. See the [verification checklist](docs/TEST_PLAN.md) for evidence and limits. OCR tests substitute the OCR engine; recognition quality requires local Tesseract. `constraints.txt` pins the tested Python dependencies; the browser application has no runtime JavaScript dependencies.
 
 Reopening a matter, adding documents, or changing destination mappings marks earlier exports as superseded and blocks new downloads. Copies downloaded earlier remain outside the application’s control. Existing databases are upgraded with additive tables; historical corrections lost before this version cannot be reconstructed.
 
 ## Next steps for production
 
-Read `docs/PRODUCT_ROADMAP.md` and `docs/SECURITY_AND_LIMITATIONS.md`. Priorities are validating the exact customer workflow and destination software, arranging supported API access, production-grade tenancy and encryption, stronger identity controls, robust OCR/AI accuracy evaluation, compliance review and disaster recovery testing.
+Read the [roadmap](docs/PRODUCT_ROADMAP.md) and [security boundaries](docs/SECURITY_AND_LIMITATIONS.md). Remaining priorities are the exact customer workflow and supported vendor API, managed keys and tenant infrastructure, SSO and factor-recovery operations, representative OCR/extraction evaluation, target-environment restore drills and independent review.
 
 **Deliverable status:** Complete, runnable **functional prototype**; not a final legally deployable German notarial SaaS product.
 

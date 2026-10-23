@@ -1,5 +1,9 @@
 # Security, Confidentiality and Regulatory Limitations
 
+**Release:** 0.11.0-prototype · **Updated:** 23 October 2026
+
+Implementation evidence is in the [test plan](TEST_PLAN.md); operational setup is in [deployment and recovery](DEPLOYMENT.md). The default demonstration and hardened deployment have different active controls.
+
 **This application is a demonstrator, not a security-certified product. Do not put actual client or notarial secrets into its preconfigured demo workspace.**
 
 ## Controls already implemented
@@ -33,19 +37,21 @@
 4. **Tenant isolation:** decide on dedicated database/object store/keys per client or equivalent architecture; arrange independent red-team isolation tests.
 5. **LLM processing:** conduct DPIA and legal review, select contractually acceptable processors and residency, enforce DPA, no-training/no-retention settings where needed; redact data when feasible; test prompt injection and hallucinations.
 6. **OCR/extraction:** build quality benchmarks for German notarial document families, human acceptance thresholds, versioned field definitions, source-page anchoring and adversarial evaluation. A 28-case versioned synthetic regression benchmark is supplied, but is not a representative office sample. Current confidence numbers are not calibrated.
-7. **Notarial integrations:** establish authorized vendor or BNotK integration, implement permission checks, dry-run, transactional handoff, idempotency, reconciliation and change rollback.
+7. **Notarial integrations:** adapt the implemented approval checks, dry-run, signing, durable intent and idempotency controls to an authorized vendor interface; validate its permissions, acknowledgment, reconciliation and rollback/import behavior. NotaryDesk is a fictional local test destination.
 8. **Audit:** move verified events/checkpoints to external write-once storage, establish immutable retention and clock synchronization; local HMAC chains alone do not prevent coordinated truncation by an administrator.
-9. **Operations:** backup/restore drills, disaster recovery, retention policies, regional hosting controls, observability, vulnerability management, penetration tests and secure SDLC.
+9. **Operations:** repeat the implemented backup/restore drill in the actual deployment, agree recovery objectives and implement retention, observability, incident response, vulnerability management and regional hosting controls.
 10. **Compliance:** qualified German notarial/legal review, including confidentiality and service-provider arrangements under applicable BNotO/NotAktVV provisions, GDPR processing agreements, and client deployment terms.
 
 ## Known technical limitations
 
 - SQLite is suitable for a limited demo but not for concurrent enterprise multi-node workloads.
 - Authenticator-app 2FA is implemented; SSO and self-service user provisioning remain unavailable. Operator provisioning creates a dedicated workspace/admin; sign-in and password recovery have separate rate limits.
+- MFA is optional for default seeded accounts. Mandatory enrollment is enforced in the hardened profile. No self-service lost-factor reset or managed recovery desk is supplied; password reset deliberately preserves the existing factor. Retain unused recovery codes separately.
 - SMTP recovery requires operator configuration; background email delivery is not durable. Demo mode intentionally displays links only for seeded, publicly documented identities and must not be used for confidential data.
 - No automated DLP, antivirus scanning, malware quarantine or content disarm.
 - Original files/exports can be encrypted per workspace. SQLite text, candidates, receiver payloads and audit details require encrypted infrastructure volumes; no managed key service is supplied.
 - A folder intake agent and signed generic HTTPS destination adapter are included. Native Outlook/Word/DMS and vendor-specific notary/BNotK/XNP integrations are not implemented.
+- NotaryDesk runs a separate TLS receiver/database inside the same application process and data volume, and shares LexFlow browser authentication. Its received payloads are encrypted; receipt/stage/history metadata is not whole-database encrypted. It is a demonstration boundary, not an independently hosted vendor.
 - The `notary_demo` file-export connector generates a file. The `demo_notary` delivery connector transmits to fictional NotaryDesk Demo over local verified TLS; this is not a real vendor integration.
 - No certified electronic signatures, notarization, legality verification, land-register lookup, AML/KYC, jurisdiction checks or legal advice.
 - Scanned PDFs are OCR'd locally only where Tesseract and PDFium are available, with up to 12 OCR pages per document. Mixed PDFs are checked per page; image files process up to 12 frames. Failed or skipped pages/frames produce warnings.
@@ -53,6 +59,8 @@
 - Content parsing for complex nested/graphic PDFs and unusual Word files remains limited.
 - Approval is a workflow control, not formal legal authorization or electronic signature.
 - HMAC checks detect edited/interior missing audit events when the signing key is protected. External trusted checkpoints are necessary to detect coordinated tail truncation; the local database is not immutable.
+- A snapshot using local fallback keys includes those keys. Store the whole snapshot privately; external audit/storage/MFA keys are excluded and must be preserved separately when configured. Recovery verifies bytes and bindings but does not provide a scheduled backup service or managed key custody.
+- Delivery recovery is an operator command, not an installed background worker. Uncertain receipts require destination inspection and explicit same-key retry. A receiver must enforce idempotency independently; the generic HTTPS contract does not provide cross-system distributed transactions.
 - Superseded exports remain on disk as historical artifacts, but new downloads are blocked after reopening, source changes or mapping changes. Already downloaded copies cannot be recalled.
 
 ## Threats / mitigation targets

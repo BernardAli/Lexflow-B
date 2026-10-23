@@ -1,8 +1,12 @@
 # LexFlow API — Functional Prototype
 
+**Release:** 0.11.0-prototype · **Updated:** 23 October 2026
+
 Interactive OpenAPI docs: `http://127.0.0.1:8000/docs` after server starts. All endpoints are JSON unless otherwise noted.
 
 OpenAPI/Swagger pages are disabled in the hardened profile. All API responses use `Cache-Control: no-store`. Requests must use an allowed Host name; the hardened profile requires HTTPS.
+
+The default Python/Docker port is 8000; use port 8001 when the launcher is configured for the current development demo. API authorization always derives the workspace from the authenticated user, not a client-supplied tenant ID.
 
 ## Workflow learning
 
@@ -16,7 +20,7 @@ Learned rules apply to future intake for their workspace and matter type. They c
 
 ## Integration adapters
 
-- `GET /api/integrations` — transfer history, local receiver records and webhook availability, scoped to the workspace.
+- `GET /api/integrations` — latest 100 transfers with attempt counts, latest 30 local receiver records, `notary_configured` and `webhook_configured`, scoped to the workspace.
 - `POST /api/integrations/dry-run` — reviewer/admin; `{ "matter_id": "...", "connector": "demo_receiver" }`. Requires approved data; returns `payload` and `preview_hash` without sending.
 - `POST /api/integrations/transfers` — reviewer/admin; `{ "matter_id": "...", "connector": "demo_receiver", "preview_hash": "hash-from-dry-run", "idempotency_key": "a-unique-request-key" }`.
 - `POST /api/integrations/intake` — authenticated multipart adapter for agents; `matter_id`, one `file`, `Idempotency-Key` header, session cookie and CSRF header. Uses the same document parsers and approval rules as browser intake; external AI is disabled for this adapter.
@@ -31,9 +35,28 @@ X-LexFlow-Timestamp: Unix timestamp in seconds
 X-LexFlow-Signature: sha256=HMAC-SHA256(secret, timestamp + "." + raw_body)
 ```
 
-The receiver must verify the HMAC and timestamp freshness, scope idempotency to `workspace_id` plus key, and return a 2xx JSON response `{ "accepted": true, "receipt_id": "destination-receipt-123" }`. Receipts permit 1–128 letters/digits/underscores/dots/hyphens. A 4xx records rejection. Network errors, 5xx, redirects or missing acceptance receipts record an **uncertain** outcome. Redirects and environment proxy settings are disabled; TLS certificates are verified. Endpoint secrets never appear in API responses. The receiver must enforce idempotency across a crash between its write and LexFlow's receipt commit.
+The receiver must verify the HMAC over the exact raw request bytes and timestamp freshness, scope idempotency to `workspace_id` plus key, and return a 2xx JSON response `{ "accepted": true, "receipt_id": "destination-receipt-123" }`. Receipts permit 1–128 word characters, dots or hyphens. HTTP 4xx records state `failed`. Network errors, 5xx, redirects or missing acceptance receipts record state `uncertain`. Redirects and environment proxy settings are disabled; TLS certificates are verified. Endpoint secrets never appear in API responses. The receiver must independently commit before acknowledging and enforce idempotency across a crash between its write and LexFlow's receipt commit.
 
-A durable integration job records the payload and destination fingerprint before network I/O. A 120-second lease prevents approval-invalidating edits during the bounded 10-second call; unrelated database writes can proceed. Transfer states include pending, sending, accepted, failed, uncertain and cancelled. Accepted keys replay without sending; active leases return an in-progress receipt. A restart can resume pending/expired sends through `python -m lexflow.manage deliver-pending`. Stale approvals, changed destinations or revoked reviewer access cancel recovery. Uncertain outcomes require explicit same-key retry after destination inspection. A scheduled worker and high-volume reconciliation remain deployment work.
+NotaryDesk Demo also requires this acknowledgment contract; a generic configured target can opt into it with `require_signed_receipt: true`:
+
+```text
+X-LexFlow-Receipt-Signature: sha256=HMAC-SHA256(secret, raw_response_body)
+```
+
+```json
+{
+  "accepted": true,
+  "receipt_id": "destination-receipt-123",
+  "idempotency_key": "original-transfer-key",
+  "payload_sha256": "sha256-hex-of-exact-request-body"
+}
+```
+
+The signing secret is the workspace target's configured secret. NotaryDesk accepts request timestamps within 300 seconds and signs its responses. LexFlow verifies the response signature, original key and transmitted-body digest before accepting a signed receipt. The generic adapter's default contract validates the TLS connection and acceptance fields; a signed response is required only when configured.
+
+`preview_hash` is LexFlow's approval fingerprint: SHA-256 of `json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")`. The transmitted body uses compact JSON with `separators=(",", ":")`; its `payload_sha256` is a separate digest over those actual bytes. Return the dry run's `preview_hash` unchanged rather than substituting a receipt digest. Keys allow 8–100 ASCII letters/digits/underscores/hyphens.
+
+A durable integration job records the payload and destination fingerprint before network I/O. A 120-second lease prevents approval-invalidating edits; unrelated database writes can proceed while the HTTPS client uses 10-second timeouts. These are HTTP timeouts, not a total wall-clock deadline. Transfer states include `pending`, `sending`, `accepted`, `failed`, `uncertain` and `cancelled`. Accepted keys replay without sending; active leases return an in-progress receipt. A restart can resume pending/expired sends through `python -m lexflow.manage deliver-pending`. Stale approvals, changed destinations or revoked reviewer access cancel recovery. Uncertain outcomes require explicit same-key retry after destination inspection. A late acceptance can have `superseded: true` when newer source approval exists; it cannot mark that newer version exported. A scheduled worker and high-volume reconciliation remain deployment work.
 
 ## Pilot evidence
 
@@ -55,14 +78,26 @@ Sign-in is limited to 10 requests per normalized email and 50 per client IP per 
 
 ## Authentication
 
-- `POST /api/auth/login` — `{ "email": "admin@keller.demo", "password": "LexFlowDemo2026!" }`; sets HttpOnly session cookie and returns a CSRF token.
+- `POST /api/auth/login` — `{ "email": "admin@keller.demo", "password": "LexFlowDemo2026!" }`; returns either a session/CSRF response or an MFA challenge, as described below.
 - `GET /api/auth/me` — authenticated user, CSRF token, demo flags.
 - `POST /api/auth/logout` — invalidate session.
-- `POST /api/auth/change-password` — current/new password.
+- `POST /api/auth/change-password` — `{ "current_password": "...", "new_password": "..." }`; retains the current session, revokes others, invalidates reset links/challenges and preserves MFA.
 - `POST /api/auth/forgot-password` — `{ "email": "admin@keller.demo" }`; public, rate limited. Returns a neutral `message` and `delivery` mode. In demo mode, only seeded sample accounts also receive a `demo_reset_path` and `expires_in_minutes: 30`. SMTP mode never returns a token.
 - `POST /api/auth/reset-password` — `{ "token": "...", "new_password": "12–128 characters", "confirm_password": "same password" }`; public, rate limited. Consumes a valid link, changes the password and revokes every session and pending reset link for the account. Returns `{ "ok": true, "message": "..." }`; requires a fresh sign-in.
 
-Authenticated state-changing requests require the `X-CSRF-Token` returned by login. Requests made from the web interface include this automatically.
+Authenticated state-changing requests require the `lexflow_session` cookie and `X-CSRF-Token` from login or successful MFA verification. The web interface includes these automatically. Login, MFA challenge verification and password recovery are public proof endpoints; enrollment and factor changes require both a session and CSRF.
+
+| Operation | Analyst | Reviewer | Admin |
+|---|---|---|---|
+| Read own workspace, create matters and ingest documents | Yes | Yes | Yes |
+| Confirm/clear fields, approve, reopen, generate output or send a transfer | No | Yes | Yes |
+| Preview learned rules | No | Yes | Yes |
+| Save/pause learned rules, change mappings, list members, set baselines | No | No | Yes |
+| Read NotaryDesk cases | Yes | Yes | Yes |
+| Change NotaryDesk preparation stage | No | Yes | Yes |
+| Manage own password/MFA/sessions and record work observations | Yes | Yes | Yes |
+
+Every permission also requires the account's MFA policy to be satisfied. Analysts can create/intake records; their restrictions apply to review, approval, output and configuration.
 
 Recovery links use `/#/reset-password?token=...`, keeping tokens in the URL fragment rather than HTTP request URLs. Auth responses and the HTML shell use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. Invalid or expired links return HTTP 400; invalid/mismatched passwords return 422; rate limits return 429 with `Retry-After`; unavailable delivery configuration returns 503 for every email address. Validation errors omit submitted credentials. Request limits are five per email and twenty per client IP per fixed 15-minute window; completion allows thirty attempts per client IP per window. Recovery endpoints require no session/CSRF token: completion requires the unguessable reset token.
 
@@ -95,8 +130,9 @@ Recovery links use `/#/reset-password?token=...`, keeping tokens in the URL frag
 
 ### Example — ingest text
 
+`POST /api/intake/text`:
+
 ```json
-POST /api/intake/text
 {
   "matter_id": "matter-demo-intake",
   "filename": "synthetic_message.txt",
@@ -107,8 +143,9 @@ POST /api/intake/text
 
 ### Example — confirm source value
 
+`POST /api/matters/{matter-id}/fields/land_register/confirm`:
+
 ```json
-POST /api/matters/{matter-id}/fields/land_register/confirm
 {
   "candidate_id": "the-suggestion-id-from-GET-matter",
   "note": "Verified against updated synthetic source"
@@ -119,8 +156,9 @@ Or use `{ "value": "München Blatt 812", "note": "Manual check" }` to enter a re
 
 ### Example — export
 
+`POST /api/matters/{matter-id}/exports`:
+
 ```json
-POST /api/matters/{matter-id}/exports
 {
   "format": "json",
   "connector": "notary_demo"
@@ -137,7 +175,7 @@ Reopening, document intake, or changed mappings invalidate affected exports. His
 
 Document detail includes persistent `warnings`. Field detail includes `review_candidate_id`, `reviewer_id`, and `validation_error`. Audit decision details preserve previous/new review values, complete notes, source candidates, and invalidated reviews.
 
-## Authenticator and demo destination APIs
+## Authenticator APIs
 
 `POST /api/auth/login` returns either the existing `{user, csrf}` session response or `{mfa_required: true, challenge, expires_in_seconds}` without a session. Submit `{challenge, code}` to `POST /api/auth/mfa/verify` to obtain the session. A code can be a current authenticator code or unused recovery code. Validation never echoes secret inputs. Failed proof returns 401 and retains a bounded attempt counter.
 
@@ -150,8 +188,35 @@ Authenticated endpoints (mutations require CSRF):
 | `/api/auth/mfa/confirm` | POST | `{code}`; enable factor, return recovery codes once |
 | `/api/auth/mfa/recovery-codes` | POST | `{password, code}`; replace recovery codes |
 | `/api/auth/mfa/disable` | POST | `{password, code}`; allowed only for optional policy |
+
+Setup expires after ten minutes; confirmation returns ten single-use recovery codes once. Challenges expire after five minutes and allow at most five proof attempts. An authenticator code uses six digits and 30-second steps; the current/adjacent step is allowed only if newer than the previously consumed step. Recovery codes can be entered with their displayed hyphens. Password reset preserves the factor and unused codes.
+
+Mandatory MFA restricts an unenrolled session to `/api/auth/me`, `/api/config`, logout, MFA status/enrollment/confirmation; case APIs return 403. Factor activation and changes revoke other sessions. TOTP replay, expired challenges and consumed recovery codes are rejected. A password-only enrollment session is not authorization to open case records.
+
+## NotaryDesk Demo APIs
+
+The fictional destination is available only with demo seeding and `LEXFLOW_DEMO_NOTARY=1` (the demo default). Its UI uses the LexFlow session. The proxy supplies the workspace from that user and talks to a separate loopback TLS receiver; no third-party account or vendor URL is required.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
 | `/demo-notary` | GET | Fictional case-management browser workspace |
-| `/api/demo-notary/cases` | GET | Read workspace cases through signed TLS proxy |
+| `/api/demo-notary/cases` | GET | Read latest 100 workspace cases through signed TLS proxy |
 | `/api/demo-notary/cases/{id}/stage` | POST | Reviewer/admin `{stage, expected_revision}` |
 
-Mandatory MFA restricts an unenrolled session to identity/configuration, enrollment and logout; case APIs return 403. Factor activation and changes revoke other sessions. TOTP replay, expired challenges and consumed recovery codes are rejected. Destination stages are `received`, `in_preparation`, `ready_for_review`; stale revisions return 409, other workspace case IDs return 404.
+Case responses include `id`, source `matter`, mapped `fields`, `source_matter_id`, `receipt_id`, `payload_sha256`, `stage`, `revision`, `received_at` and `demo: true`. Approved received values are read-only. Destination stages are `received`, `in_preparation`, `ready_for_review`; stale revisions return 409 and other workspace case IDs return 404. A disabled demo destination returns 404 on its UI/proxy routes and 503 when chosen for a dry run/transfer.
+
+## Error handling
+
+| Status | Meaning |
+|---|---|
+| 400 | Invalid/expired reset link, invalid authenticator confirmation or disabled external AI request |
+| 401 | Missing/expired session or invalid sign-in/factor proof; a failed proof can be retried within challenge limits |
+| 403 | CSRF failure, insufficient role or required MFA enrollment |
+| 404 | Resource unavailable in the authenticated workspace, or demo notary disabled |
+| 409 | Stale preview/revision, reused key with changed payload, changed destination, superseded export or approval-invalidating edit during an active delivery |
+| 413 / 415 | Oversized/empty upload or unsupported type |
+| 422 | Invalid request fields, mapping/value validation or unsatisfied approval gate |
+| 429 | Rate limit; inspect `Retry-After` |
+| 503 | Missing deployment/destination keys, unavailable service or failed response/artifact authentication |
+
+For uncertain delivery, inspect the destination before retrying the original transfer key. Reusing that key after changing the approved payload returns 409. A fresh preview/key is for a deliberately new handoff, after resolving the prior outcome.

@@ -1,4 +1,8 @@
-# Local Deployment Guide
+# Deployment and Recovery Guide
+
+**Release:** 0.11.0-prototype · **Updated:** 23 October 2026
+
+Use the [presenter PDF](LexFlow_AI_Demonstration_Guide.pdf) for the demonstration and the [API reference](API.md) for request contracts. Examples run from the repository root. The default port is 8000; the current development demo uses 8001.
 
 ## Prerequisites
 
@@ -19,6 +23,20 @@ Visit `http://localhost:8000`. The compose port is bound to the local loopback i
 
 The `lexflow_data` named volume preserves the database and uploads across restarts.
 
+The demo Compose file forwards only variables declared in `docker-compose.yml`. To configure the newer notary/MFA/idle controls with `.env`, add an untracked `compose.override.yaml` beside it:
+
+```yaml
+services:
+  lexflow:
+    environment:
+      LEXFLOW_DEMO_NOTARY: ${LEXFLOW_DEMO_NOTARY:-1}
+      LEXFLOW_REQUIRE_MFA: ${LEXFLOW_REQUIRE_MFA:-0}
+      LEXFLOW_MFA_KEY: ${LEXFLOW_MFA_KEY:-}
+      LEXFLOW_IDLE_MINUTES: ${LEXFLOW_IDLE_MINUTES:-30}
+```
+
+Then run `docker compose -f docker-compose.yml -f compose.override.yaml up --build` to apply both files. Use `deploy/compose.hardened.yml` for the dedicated hardened policy, which explicitly sets mandatory MFA and disables demo features. `LEXFLOW_PORT` configures the Python launchers, not the Compose port mapping.
+
 ```bash
 docker compose down                 # stop; keep the volume
 docker compose down --volumes       # erase all demo data irreversibly
@@ -32,9 +50,56 @@ Launch scripts use `.venv-demo` and select Python 3.12 to avoid changing an exis
 
 On a subsequent start the app preserves its local database under `data/` unless `LEXFLOW_DATA_DIR` points elsewhere.
 
+The launchers load `.env` into the process. Values in that file can override values supplied before the launcher command; change or remove a conflicting `.env` entry when selecting a different port or data directory. Manual `python -m uvicorn`, `lexflow.manage` and benchmark commands do not load `.env` themselves.
+
+## Configuration reference
+
+| Variable | Demo default | Purpose / hardened requirement |
+|---|---|---|
+| `LEXFLOW_SECURITY_PROFILE` | `demo` | `hardened` validates deployment configuration and dedicated-office startup |
+| `LEXFLOW_DATA_DIR` | repository `data/` | Database, originals, exports, demo keys and destination store; must be writable |
+| `LEXFLOW_SEED_DEMO` | `1` | Synthetic users/matters; must be `0` in hardened |
+| `LEXFLOW_DEMO_NOTARY` | `1` | Requires seeding; explicitly enabling it in hardened is rejected |
+| `LEXFLOW_REQUIRE_MFA` | `0` | Defaults to `1` in hardened; hardened refuses an opt-out |
+| `LEXFLOW_MFA_KEY` | protected `.mfa-key` fallback | Separate Fernet key; external key required in hardened |
+| `LEXFLOW_AUDIT_KEY` | protected `.audit-key` fallback | Audit and snapshot HMAC key; external value of at least 32 characters required in hardened |
+| `LEXFLOW_STORAGE_KEYS` | unset | JSON workspace key rings for file encryption; required in hardened |
+| `LEXFLOW_ALLOWED_HOSTS` | `localhost,127.0.0.1,testserver` in application code | Explicit restricted hosts required in hardened; `.env.example`/Compose omit testserver |
+| `LEXFLOW_SECURE_COOKIES` | `0` | Defaults to `1` in hardened and must stay enabled there |
+| `LEXFLOW_IDLE_MINUTES` | `30` | Idle expiry, 1–720 minutes; absolute session expiry is 12 hours |
+| `LEXFLOW_MAX_UPLOAD_MB` | `12` | Limit per original file; browser batches contain at most six files |
+| `LEXFLOW_WEBHOOK_TARGETS` | unset | JSON workspace HTTPS URL/signing-secret map |
+| `LEXFLOW_RESET_DELIVERY` | `demo` if seeded, otherwise `disabled` | `demo`, `smtp` or `disabled`; Compose explicitly defaults demo delivery |
+| `LEXFLOW_PUBLIC_URL` | unset | HTTPS origin required for SMTP and hardened deployment |
+| `LEXFLOW_ALLOW_EXTERNAL_AI` | `0` | Server permission; intake also needs consent and an API key |
+| `OPENAI_API_KEY` | unset | External AI credential; keep out of source control |
+| `OPENAI_MODEL` | `gpt-4.1-mini` | Optional enrichment model configured by the operator |
+| `LEXFLOW_PORT` | `8000` | Python launcher listen port |
+| `LEXFLOW_PYTHON` / `LEXFLOW_VENV_DIR` | Python 3.12 / `.venv-demo` | Launcher executable and virtual environment |
+| `LEXFLOW_AGENT_PASSWORD` | unset | Folder-agent password; enrolled users still supply a factor interactively |
+
+For SMTP variables, see [password reset delivery](#password-reset-delivery). The hardened Compose file also requires `LEXFLOW_DOMAIN` to construct the public URL, host allowlist and proxy configuration. These variables describe application behavior; an environment file only reaches a container when the Compose service forwards it.
+
+Operator commands must receive the same data directory and external keys as the application. In a trusted Linux/macOS shell, an existing local `.env` can be loaded before a command:
+
+```bash
+set -a
+. ./.env
+set +a
+.venv-demo/bin/python -m lexflow.manage --help
+```
+
+The shell evaluates `.env` as code; use only a file you control. For the hardened stack, run commands through the same `docker compose --env-file .env.hardened -f deploy/compose.hardened.yml` configuration so the container receives its configured keys.
+
 ## Reset demo data
 
-Stop the Python server and remove the `data/lexflow.sqlite3`, `data/uploads/` and `data/exports/` folder, then restart. This permanently deletes all demo changes. Docker reset instructions are above.
+For a fresh rehearsal, stop the Python server and start the demo against a new, empty `LEXFLOW_DATA_DIR`. Keep the old directory intact; it contains the main database, files, MFA/audit fallback keys and `demo_notary/` database/keys. For example, after loading a demo environment:
+
+```bash
+LEXFLOW_DATA_DIR=./data-rehearsal-2026-10-23 .venv-demo/bin/python -m uvicorn lexflow.main:app --host 127.0.0.1 --port 8001
+```
+
+Choose another new directory for the next reset. Returning to the original `LEXFLOW_DATA_DIR` restores the previous demo state. For Docker, the volume-removal command above permanently removes every demo store, enrollment and case; preserve a verified backup first if those records are needed.
 
 ## Password reset delivery
 
@@ -131,7 +196,7 @@ Use the Security page to inspect verification and download a checkpoint, or run:
 
 ```bash
 .venv-demo/bin/python -m lexflow.manage verify-audit --tenant-id office-1
-.venv-demo/bin/python -m lexflow.manage backup /secure-backups/lexflow-snapshot-2026-10-22
+.venv-demo/bin/python -m lexflow.manage backup /secure-backups/lexflow-snapshot-2026-10-23
 ```
 
 The snapshot uses SQLite's online backup API while holding an application write lock and copies document/export files consistently. It refuses an existing destination or a destination inside active data. Local fallback signing keys are copied for demo recovery; external encryption and signing keys are **not** included. Put backups and checkpoints in separately protected storage. A chain detects changed/interior missing events; a trusted external checkpoint is required to detect coordinated truncation of both history and its local head.
@@ -145,7 +210,21 @@ Snapshots use a versioned HMAC-authenticated file manifest. Verification checks 
 
 Restore refuses an existing target, verifies the copied snapshot, rebases artifact paths to the replacement directory, revokes all sessions/reset links/MFA challenges and clears abandoned delivery leases. It preserves enrolled factors, unused recovery codes, audit history and transfer keys. A restore receipt records the source checkpoint. The snapshot can be moved before restoration. This tool accepts v2 authenticated snapshots; retain older snapshots with their matching software for recovery.
 
-For a drill, stop the target instance and preserve its old volume. Restore to a new directory, start an isolated instance with `LEXFLOW_DATA_DIR` pointing there and the original external keys injected, then verify login, the audit checkpoint and an authenticated document download before switching traffic. For containers, run restore where its destination path matches the final mount path, such as `/data`; ensure the application user owns that volume. Never overwrite a running instance's database. A snapshot coordinates LexFlow writes and independently captures the demo destination; a transfer in flight can require same-key reconciliation after restore.
+For a drill, stop the target instance and preserve its old volume. Restore to a new directory, start an isolated instance with `LEXFLOW_DATA_DIR` pointing there and the original external keys injected, then verify login, the audit checkpoint and an authenticated document download before switching traffic. The restore destination must not exist and must be outside the operator process's active data directory.
+
+For containers, an existing mount point such as `/data` cannot itself be the restore destination. Mount a replacement volume, restore into a new child such as `/data/restored` with the restore process's `LEXFLOW_DATA_DIR` set to a separate scratch path, then configure the application to use `/data/restored` in that volume. Keep the final absolute artifact paths identical and ensure the application user owns the files. Never overwrite a running instance's database. A snapshot coordinates LexFlow writes and independently captures the demo destination; a transfer in flight can require same-key reconciliation after restore.
+
+| Operator command | Behavior |
+|---|---|
+| `create-workspace --tenant-id ID --name NAME --email EMAIL` | Provision an empty office/admin, prompting twice for its password; refuses an existing office |
+| `backup DESTINATION` | Create and verify a new v2 snapshot outside active data |
+| `verify-backup SOURCE` | Verify manifest, database, artifact and key/audit bindings without starting the web server |
+| `restore SOURCE DESTINATION` | Verify and restore into a new path; revoke sessions and reset tokens |
+| `verify-audit --tenant-id ID` | Print verification/checkpoint JSON and fail if the chain is invalid |
+| `rotate-artifacts --tenant-id ID` | Re-encrypt originals/exports with the first configured workspace key |
+| `deliver-pending --limit 20` | Resume pending/expired delivery intents, using original keys and fresh approval/access checks |
+
+Invoke these as `.venv-demo/bin/python -m lexflow.manage COMMAND`. Verification and restore do not initialize the active database. Treat the restored directory as active data; create a new backup to produce a fresh authenticated snapshot after restoration.
 
 ## Folder intake agent and HTTPS destination
 
@@ -155,7 +234,7 @@ For a controlled local demonstration:
 .venv-demo/bin/python agents/folder_agent.py /path/to/inbox --url http://127.0.0.1:8001 --email admin@keller.demo --matter YOUR_MATTER_ID
 ```
 
-The agent prompts for a password and, when enrolled, an authenticator or unused recovery code, authenticates using session/CSRF controls, sends one file per request, and keeps original files. `LEXFLOW_AGENT_PASSWORD` supports supervised automation without putting a password in arguments. Add `--watch` to scan every five seconds. The agent reads the top-level folder, skips symlinks/unsupported files, checks size/mtime around reads and uses stable content keys. Prefer writing to a temporary name and atomically renaming complete files into the inbox; stable metadata alone cannot prove a scanner finished writing. Repeated content with the same file name and matter replays its intake receipt. A changed file becomes new evidence and invalidates prior reviews normally. Only loopback HTTP or verified HTTPS origins are permitted. Session expiry causes reauthentication and retry with the same key.
+The agent prompts for a password and, when enrolled, an authenticator or unused recovery code, authenticates using session/CSRF controls, sends one file per request, and keeps original files. Complete any required factor enrollment in the browser first. `LEXFLOW_AGENT_PASSWORD` supplies the password without putting it in arguments; factor prompts keep enrolled-account use supervised. Add `--watch` to scan every five seconds. The agent reads the top-level folder, skips symlinks/unsupported files, checks size/mtime around reads and uses stable content keys. Prefer writing to a temporary name and atomically renaming complete files into the inbox; stable metadata alone cannot prove a scanner finished writing. Repeated content with the same file name and matter replays its intake receipt. A changed file becomes new evidence and invalidates prior reviews normally. Only loopback HTTP or verified HTTPS origins are permitted. Session expiry causes reauthentication, another factor prompt when enrolled, and retry with the same key.
 
 To enable a supported generic destination, set `LEXFLOW_WEBHOOK_TARGETS` to a JSON workspace map:
 
@@ -175,7 +254,7 @@ TOTP follows [RFC 6238](https://datatracker.ietf.org/doc/html/rfc6238), with 30-
 
 With demo seeding on, NotaryDesk Demo starts automatically as a separate loopback TLS server and encrypted SQLite store under `data/demo_notary/`. No third-party account is required. Use **Integrations → NotaryDesk Demo (HTTPS)**, dry-run an approved matter, send it, then open **Open demo notary**. Case details and delivery evidence have separate keyboard-accessible tabs. Reviewers/admins can move cases through Received, In preparation and Ready for review; analysts can read them. Workspace scoping and revision checks apply at the destination. This is a fictional product and does not notarize documents. Set `LEXFLOW_DEMO_NOTARY=0` to disable it. It is unavailable without demo seeding and rejected if explicitly enabled in a hardened profile.
 
-Delivery commits an immutable payload intent and destination binding before contacting the receiver. A 120-second lease protects the approved matter while the 10-second network call runs without holding the SQLite writer lock. Completed acceptance replays the stored receipt. The receiver independently commits before acknowledging and deduplicates workspace/key pairs. NotaryDesk authenticates response signatures and binds its receipt to the key and payload hash. To recover an unsent or abandoned intent after a restart:
+Delivery commits an immutable payload intent and destination binding before contacting the receiver. A 120-second lease protects the approved matter while the HTTP client uses 10-second timeouts and releases the SQLite writer lock. Completed acceptance replays the stored receipt. The receiver independently commits before acknowledging and deduplicates workspace/key pairs. LexFlow verifies NotaryDesk response signatures and the receipt's original key and transmitted-body digest. These HTTP timeouts do not guarantee a 10-second total wall-clock duration. To recover an unsent or abandoned intent after a restart:
 
 ```bash
 .venv-demo/bin/python -m lexflow.manage deliver-pending --limit 20

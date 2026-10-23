@@ -1,0 +1,145 @@
+WEBVTT
+
+00:00:00.700 --> 00:00:05.067
+Welcome to Lex Flow A I, a working document workflow prototype.
+
+00:00:05.247 --> 00:00:09.790
+This presentation follows the version zero point eleven demonstration guide.
+
+00:00:09.970 --> 00:00:15.117
+We will receive synthetic documents, review their evidence, and approve structured data.
+
+00:00:15.297 --> 00:00:18.957
+Then we will send that data to a fictional notary workspace.
+
+00:00:20.660 --> 00:00:24.435
+Start the local Python launcher or the Docker demonstration.
+
+00:00:24.615 --> 00:00:29.409
+The default port is eight thousand; the current development demo uses eight thousand and one.
+
+00:00:29.589 --> 00:00:32.212
+Sign in with a seeded demonstration account.
+
+00:00:32.392 --> 00:00:36.959
+Use synthetic records throughout, and keep the guide nearby for exact actions.
+
+00:00:38.660 --> 00:00:42.593
+Choose Start guided demo to create a fresh property purchase matter.
+
+00:00:42.773 --> 00:00:46.746
+Open the buyer questionnaire and the fictional land register extract.
+
+00:00:46.926 --> 00:00:52.149
+One source names sheet eight hundred and twelve; the other names eight hundred and seventy two.
+
+00:00:52.329 --> 00:00:56.292
+Lex Flow exposes the disagreement instead of choosing silently.
+
+00:00:58.020 --> 00:01:01.270
+Inspect both suggestions before making a decision.
+
+00:01:01.450 --> 00:01:06.333
+In this fictional example, the reviewer chooses sheet eight hundred and seventy two.
+
+00:01:06.513 --> 00:01:10.231
+Confirm the other required fields and record a note where useful.
+
+00:01:10.411 --> 00:01:15.455
+Approval stays blocked until required values are valid and every conflict is resolved.
+
+00:01:17.180 --> 00:01:21.038
+Open Export approved data and inspect the destination mapping.
+
+00:01:21.218 --> 00:01:26.071
+Generate a structured JSON file or a spreadsheet friendly CSV file.
+
+00:01:26.251 --> 00:01:29.623
+The file contains reviewed values linked to the source matter.
+
+00:01:29.803 --> 00:01:35.724
+Reopening, new evidence, or changed mappings require renewed approval and supersede earlier outputs.
+
+00:01:37.460 --> 00:01:42.709
+In Integrations, select the approved matter and Notary Desk Demo over H T T P S.
+
+00:01:42.889 --> 00:01:45.528
+Run a dry run and inspect the mapped payload.
+
+00:01:45.708 --> 00:01:48.905
+Send the approved data and inspect its accepted receipt.
+
+00:01:49.085 --> 00:01:53.655
+The request crosses verified local T L S to a separate encrypted case store.
+
+00:01:55.380 --> 00:01:58.843
+Open the demo notary and select the received case.
+
+00:01:59.023 --> 00:02:02.938
+Case details shows the approved values received from Lex Flow.
+
+00:02:03.118 --> 00:02:07.131
+Change the preparation stage and save it in the receiving workspace.
+
+00:02:07.311 --> 00:02:12.292
+Delivery evidence shows the receipt, source approval, and received payload fingerprint.
+
+00:02:14.020 --> 00:02:18.120
+Workflow Studio lets an office teach a literal label for a field.
+
+00:02:18.300 --> 00:02:21.767
+Test the label on a temporary example before saving it.
+
+00:02:21.947 --> 00:02:24.984
+An administrator saves the rule with version history.
+
+00:02:25.164 --> 00:02:30.268
+Future matching intake receives a suggestion, while human review remains mandatory.
+
+00:02:31.980 --> 00:02:36.421
+Pilot measurement compares an observed baseline with reported work sessions.
+
+00:02:36.601 --> 00:02:42.149
+Missing observations stay empty, and acceptance rates are separate for each destination.
+
+00:02:42.329 --> 00:02:48.840
+The synthetic text benchmark records one hundred percent precision and ninety seven point two percent recall.
+
+00:02:49.020 --> 00:02:55.330
+These results do not establish real office accuracy, O C R quality, or customer savings.
+
+00:02:57.060 --> 00:03:00.516
+In Settings, open My account to set up an authenticator.
+
+00:03:00.696 --> 00:03:05.308
+Save the recovery codes privately; each can replace a second factor once.
+
+00:03:05.488 --> 00:03:09.763
+The hardened profile requires enrollment before opening case records.
+
+00:03:09.943 --> 00:03:16.571
+Security also shows session controls, configured file encryption, and workspace audit verification.
+
+00:03:18.300 --> 00:03:23.013
+Durable transfer intents retain the original key across an interrupted delivery.
+
+00:03:23.193 --> 00:03:28.049
+An idempotent receiver prevents a duplicate after it has already accepted the data.
+
+00:03:28.229 --> 00:03:33.643
+Backups verify their manifest, files, audit history, and encrypted records.
+
+00:03:33.823 --> 00:03:39.529
+Restore uses a new directory and revokes old sessions while preserving evidence and enrolled factors.
+
+00:03:41.260 --> 00:03:48.291
+The demonstration connects source documents, a human decision, approved output, and a signed fictional handoff.
+
+00:03:48.471 --> 00:03:53.507
+The release passed one hundred and eleven backend tests and twenty one interface tests.
+
+00:03:53.687 --> 00:03:57.488
+Browser checks covered one hundred and forty one page and panel views.
+
+00:03:57.668 --> 00:04:02.933
+Next, select a supported vendor and validate the workflow in an actual customer pilot.

@@ -1,0 +1,126 @@
+{
+  "format": "lexflow-presentation-video-v1",
+  "version": "0.11.0-prototype",
+  "source_pdf": "LexFlow_AI_Demonstration_Guide.pdf",
+  "source_pdf_sha256": "cfd0568c3868788309a6febf93efb6f45641e9bb1ce2095d16688ba6f5fe74eb",
+  "story_sha256": "97e9a5fc605ff85b1d6b09c5516ee385181fbc8971ae17550f35ca9a2d1e09cd",
+  "width": 1920,
+  "height": 1080,
+  "fps": 25,
+  "narration": "local synthetic English / Flite slt",
+  "captions": "burned into picture; WebVTT sidecar supplied",
+  "synthetic_content": true,
+  "chapters": [
+    {
+      "id": "welcome",
+      "title": "Keep the evidence. Move the work forward.",
+      "start": 0.0,
+      "duration": 19.96,
+      "source_pages": [
+        1
+      ]
+    },
+    {
+      "id": "prepare",
+      "title": "Start with a synthetic workspace.",
+      "start": 19.96,
+      "duration": 18.0,
+      "source_pages": [
+        2
+      ]
+    },
+    {
+      "id": "intake",
+      "title": "Two documents. One visible conflict.",
+      "start": 37.96,
+      "duration": 19.36,
+      "source_pages": [
+        3
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Let a person make the decision.",
+      "start": 57.32,
+      "duration": 19.16,
+      "source_pages": [
+        4
+      ]
+    },
+    {
+      "id": "export",
+      "title": "Approved values. Clear destination keys.",
+      "start": 76.48,
+      "duration": 20.28,
+      "source_pages": [
+        5
+      ]
+    },
+    {
+      "id": "handoff",
+      "title": "Preview first. Send deliberately.",
+      "start": 96.76,
+      "duration": 17.92,
+      "source_pages": [
+        6
+      ]
+    },
+    {
+      "id": "destination",
+      "title": "Continue in the destination.",
+      "start": 114.68,
+      "duration": 18.64,
+      "source_pages": [
+        11
+      ]
+    },
+    {
+      "id": "learning",
+      "title": "Teach the label. Keep the judgement.",
+      "start": 133.32,
+      "duration": 17.96,
+      "source_pages": [
+        7
+      ]
+    },
+    {
+      "id": "measurement",
+      "title": "Show observations, not invented savings.",
+      "start": 151.28,
+      "duration": 25.08,
+      "source_pages": [
+        8
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Protect access. Preserve decisions.",
+      "start": 176.36,
+      "duration": 21.24,
+      "source_pages": [
+        9,
+        12
+      ]
+    },
+    {
+      "id": "recovery",
+      "title": "Prepare for an interrupted day.",
+      "start": 197.6,
+      "duration": 22.96,
+      "source_pages": [
+        12
+      ]
+    },
+    {
+      "id": "next",
+      "title": "A complete story. A clear next step.",
+      "start": 220.56,
+      "duration": 23.4,
+      "source_pages": [
+        10
+      ]
+    }
+  ],
+  "duration_seconds": 243.981333,
+  "bytes": 6901956
+}

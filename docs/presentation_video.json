@@ -1,0 +1,280 @@
+{
+  "format": "lexflow-presentation-story-v1",
+  "version": "0.11.0-prototype",
+  "title": "LexFlow AI — From documents to an approved handoff",
+  "source_pdf": "LexFlow_AI_Demonstration_Guide.pdf",
+  "language": "en",
+  "synthetic_content": true,
+  "scenes": [
+    {
+      "id": "welcome",
+      "section": "A clearer document workflow",
+      "title": "Keep the evidence.\nMove the work forward.",
+      "pages": [
+        1
+      ],
+      "visual": "cover",
+      "bullets": [
+        "Receive documents",
+        "Review with evidence",
+        "Approve and hand off"
+      ],
+      "detail": "A narrated presentation of the v0.11 demonstration guide.",
+      "narration": [
+        "Welcome to Lex Flow A I, a working document workflow prototype.",
+        "This presentation follows the version zero point eleven demonstration guide.",
+        "We will receive synthetic documents, review their evidence, and approve structured data.",
+        "Then we will send that data to a fictional notary workspace."
+      ]
+    },
+    {
+      "id": "prepare",
+      "section": "01 / Prepare the demonstration",
+      "title": "Start with a\nsynthetic workspace.",
+      "pages": [
+        2
+      ],
+      "visual": "image",
+      "image": "11-overview-hero.png",
+      "bullets": [
+        "Run the local Python or Docker demo.",
+        "Sign in with a seeded demonstration account.",
+        "Keep the guide and sample files nearby."
+      ],
+      "detail": "Default port: 8000  ·  Current development demo: 8001",
+      "narration": [
+        "Start the local Python launcher or the Docker demonstration.",
+        "The default port is eight thousand; the current development demo uses eight thousand and one.",
+        "Sign in with a seeded demonstration account.",
+        "Use synthetic records throughout, and keep the guide nearby for exact actions."
+      ]
+    },
+    {
+      "id": "intake",
+      "section": "02 / Receive and extract",
+      "title": "Two documents.\nOne visible conflict.",
+      "pages": [
+        3
+      ],
+      "visual": "image",
+      "image": "12-source-suggestions.png",
+      "bullets": [
+        "Start guided demo creates a fresh matter.",
+        "Inspect the questionnaire and register extract.",
+        "The land-register values disagree: 812 vs 872."
+      ],
+      "detail": "Suggestions remain unverified until a reviewer confirms them.",
+      "narration": [
+        "Choose Start guided demo to create a fresh property purchase matter.",
+        "Open the buyer questionnaire and the fictional land register extract.",
+        "One source names sheet eight hundred and twelve; the other names eight hundred and seventy two.",
+        "Lex Flow exposes the disagreement instead of choosing silently."
+      ]
+    },
+    {
+      "id": "review",
+      "section": "03 / Human review",
+      "title": "Let a person\nmake the decision.",
+      "pages": [
+        4
+      ],
+      "visual": "conflict",
+      "bullets": [
+        "Inspect both source suggestions.",
+        "Choose Blatt 872 in this fictional scenario.",
+        "Confirm required fields, then approve."
+      ],
+      "detail": "Every unresolved conflict blocks approval, including optional fields.",
+      "narration": [
+        "Inspect both suggestions before making a decision.",
+        "In this fictional example, the reviewer chooses sheet eight hundred and seventy two.",
+        "Confirm the other required fields and record a note where useful.",
+        "Approval stays blocked until required values are valid and every conflict is resolved."
+      ]
+    },
+    {
+      "id": "export",
+      "section": "04 / Controlled output",
+      "title": "Approved values.\nClear destination keys.",
+      "pages": [
+        5
+      ],
+      "visual": "mapping",
+      "bullets": [
+        "Preview the mapped JSON or CSV.",
+        "Generate a real downloadable file.",
+        "New evidence or changed mappings require approval again."
+      ],
+      "detail": "A generated file is separate from a destination acceptance receipt.",
+      "narration": [
+        "Open Export approved data and inspect the destination mapping.",
+        "Generate a structured JSON file or a spreadsheet friendly CSV file.",
+        "The file contains reviewed values linked to the source matter.",
+        "Reopening, new evidence, or changed mappings require renewed approval and supersede earlier outputs."
+      ]
+    },
+    {
+      "id": "handoff",
+      "section": "05 / Integration evidence",
+      "title": "Preview first.\nSend deliberately.",
+      "pages": [
+        6
+      ],
+      "visual": "image",
+      "image": "17-notary-handoff.png",
+      "crop": [
+        270,
+        100,
+        1400,
+        770
+      ],
+      "bullets": [
+        "Select NotaryDesk Demo over HTTPS.",
+        "Run a dry run on the approved matter.",
+        "Send approved data and inspect the receipt."
+      ],
+      "detail": "NotaryDesk Demo is fictional; no real notary vendor is connected.",
+      "narration": [
+        "In Integrations, select the approved matter and Notary Desk Demo over H T T P S.",
+        "Run a dry run and inspect the mapped payload.",
+        "Send the approved data and inspect its accepted receipt.",
+        "The request crosses verified local T L S to a separate encrypted case store."
+      ]
+    },
+    {
+      "id": "destination",
+      "section": "06 / NotaryDesk Demo",
+      "title": "Continue in\nthe destination.",
+      "pages": [
+        11
+      ],
+      "visual": "image",
+      "image": "18-notary-desk.png",
+      "crop": [
+        410,
+        475,
+        1370,
+        1210
+      ],
+      "bullets": [
+        "Case details shows received, read-only values.",
+        "Move the case to In preparation and save.",
+        "Delivery evidence links back to source approval."
+      ],
+      "detail": "Destination stages have their own revision checks and workspace scope.",
+      "narration": [
+        "Open the demo notary and select the received case.",
+        "Case details shows the approved values received from Lex Flow.",
+        "Change the preparation stage and save it in the receiving workspace.",
+        "Delivery evidence shows the receipt, source approval, and received payload fingerprint."
+      ]
+    },
+    {
+      "id": "learning",
+      "section": "07 / Workflow learning",
+      "title": "Teach the label.\nKeep the judgement.",
+      "pages": [
+        7
+      ],
+      "visual": "image",
+      "image": "14-learning.png",
+      "bullets": [
+        "Preview a literal label for a buyer field.",
+        "An administrator saves a versioned rule.",
+        "Future matching intake still needs human review."
+      ],
+      "detail": "Saved rules contain configuration, not the preview example as training data.",
+      "narration": [
+        "Workflow Studio lets an office teach a literal label for a field.",
+        "Test the label on a temporary example before saving it.",
+        "An administrator saves the rule with version history.",
+        "Future matching intake receives a suggestion, while human review remains mandatory."
+      ]
+    },
+    {
+      "id": "measurement",
+      "section": "08 / Measure the evidence",
+      "title": "Show observations,\nnot invented savings.",
+      "pages": [
+        8
+      ],
+      "visual": "metrics",
+      "bullets": [
+        "Record a baseline and actual work sessions.",
+        "Keep each destination’s acceptance rate separate.",
+        "Use the synthetic benchmark within its stated scope."
+      ],
+      "detail": "28 synthetic text cases  ·  Two damaged-label misses  ·  Not an OCR benchmark",
+      "narration": [
+        "Pilot measurement compares an observed baseline with reported work sessions.",
+        "Missing observations stay empty, and acceptance rates are separate for each destination.",
+        "The synthetic text benchmark records one hundred percent precision and ninety seven point two percent recall.",
+        "These results do not establish real office accuracy, O C R quality, or customer savings."
+      ]
+    },
+    {
+      "id": "security",
+      "section": "09 / Trust and access",
+      "title": "Protect access.\nPreserve decisions.",
+      "pages": [
+        9,
+        12
+      ],
+      "visual": "security",
+      "bullets": [
+        "Set up an authenticator in My account.",
+        "Save recovery codes; each works once.",
+        "Inspect audit integrity and active controls."
+      ],
+      "detail": "MFA is optional in the seeded demo and required in the hardened profile.",
+      "narration": [
+        "In Settings, open My account to set up an authenticator.",
+        "Save the recovery codes privately; each can replace a second factor once.",
+        "The hardened profile requires enrollment before opening case records.",
+        "Security also shows session controls, configured file encryption, and workspace audit verification."
+      ]
+    },
+    {
+      "id": "recovery",
+      "section": "10 / Reliability and recovery",
+      "title": "Prepare for\nan interrupted day.",
+      "pages": [
+        12
+      ],
+      "visual": "recovery",
+      "bullets": [
+        "Transfer intents retain the original key after a crash.",
+        "Verify the snapshot before restoring to a new path.",
+        "Restored sessions are revoked; evidence and factors survive."
+      ],
+      "detail": "Inspect uncertain destination outcomes before retrying the same transfer key.",
+      "narration": [
+        "Durable transfer intents retain the original key across an interrupted delivery.",
+        "An idempotent receiver prevents a duplicate after it has already accepted the data.",
+        "Backups verify their manifest, files, audit history, and encrypted records.",
+        "Restore uses a new directory and revokes old sessions while preserving evidence and enrolled factors."
+      ]
+    },
+    {
+      "id": "next",
+      "section": "Next / From demonstration to customer pilot",
+      "title": "A complete story.\nA clear next step.",
+      "pages": [
+        10
+      ],
+      "visual": "closing",
+      "bullets": [
+        "Reviewed case, generated file, signed demo receipt.",
+        "Repeatable tests and documented recovery.",
+        "Choose a supported vendor and validate an office pilot."
+      ],
+      "detail": "Allgift Technologies Ltd  ·  LexFlow AI v0.11.0-prototype",
+      "narration": [
+        "The demonstration connects source documents, a human decision, approved output, and a signed fictional handoff.",
+        "The release passed one hundred and eleven backend tests and twenty one interface tests.",
+        "Browser checks covered one hundred and forty one page and panel views.",
+        "Next, select a supported vendor and validate the workflow in an actual customer pilot."
+      ]
+    }
+  ]
+}

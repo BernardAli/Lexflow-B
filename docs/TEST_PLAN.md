@@ -1,5 +1,9 @@
 # Demonstration and Verification Checklist
 
+**Release:** 0.11.0-prototype · **Evidence date:** 23 October 2026
+
+The current release passed **111 backend tests, 21 UI tests and 141 Chromium page/panel checks**. Browser checks used isolated synthetic data at widths 320, 390, 768, 1440 and 1920 pixels. See [release verification](#0110-release-verification--2026-10-23) below for the coverage and limits; the [PDF guide](LexFlow_AI_Demonstration_Guide.pdf) provides presenter steps.
+
 | ID | Scenario | Expected outcome |
 |---|---|---|
 | A01 | Visit `/api/health` | HTTP 200 and prototype status |
@@ -13,7 +17,7 @@
 | A09 | Export as CSV | BOM-prefixed UTF-8 CSV, mapped key-value rows |
 | A10 | Reopen approved matter | Matter becomes in_review; approval reset |
 | A11 | Upload another document | Existing confirmations cleared for re-review |
-| A12 | Login as analyst | Can view but cannot confirm, approve or export |
+| A12 | Login as analyst | Can view/create/intake, but cannot confirm, approve, export or send transfers |
 | A13 | Login as reviewer | Can confirm; cannot alter admin mappings |
 | A14 | Login as Weber admin | Keller matter cannot be read or modified |
 | A15 | Remove CSRF header | State mutation returns HTTP 403 |
@@ -54,13 +58,13 @@ Additional platform verification:
 | B05 | Dry run an unapproved matter | Transfer blocked |
 | B06 | Send an approved preview twice with one key | One destination record, one receipt; second request replays |
 | B07 | Change approved content after preview | Fingerprint check rejects stale preview |
-| B08 | Mock HTTPS rejection/timeout/acceptance | Rejected/uncertain/accepted outcomes remain distinct; secrets are not returned |
+| B08 | Mock HTTPS rejection/timeout/acceptance | `failed`/`uncertain`/`accepted` outcomes remain distinct; secrets are not returned |
 | B09 | Run folder agent twice on the same file | One document and atomic intake receipt; second run reports already received |
 | B10 | Inspect pilot with no baseline/time/transfers | Missing evidence stays empty; no fabricated savings or success rate |
 | B11 | Add baseline and work sessions, retry an observation | Correct per-case totals and rates; observation key prevents double counting |
 | B12 | Alter an audit event directly | Chain verification reports invalid |
 | B13 | Configure workspace file keys and rotate | Stored bytes are encrypted; authenticated download reproduces original bytes |
-| B14 | Back up a workspace | Consistent database/files and audit fallback key are copied to a new destination |
+| B14 | Back up a workspace | Authenticated v2 database/file snapshot verifies; local fallback keys are included and configured external keys are excluded |
 | B15 | Start incomplete hardened configuration | Startup fails closed |
 | B16 | Provision one dedicated workspace and start with HTTPS | Secure cookies, no seeded credentials, hidden API docs and valid audit verification |
 | B17 | Use forged Host or exhausted sign-in attempts | Host rejected or 429 with Retry-After |
@@ -78,14 +82,20 @@ Tabbed interface verification:
 | C06 | Generate an approved matter export | Exports tab opens with the generated download and updated count |
 | C07 | Sign out or enter a reviewer workspace | Tab preferences clear; membership data and its tab remain admin-only |
 
-The tab update passed 18 interface tests and 81 backend tests. Chromium checks covered 125 panel views across 12 routes at widths 320, 390, 768, 1440 and 1920 pixels, checking panel relationships, keyboard focus, the 12px text minimum, horizontal overflow and the review/approval/export/receiver flow. Browser checks used isolated synthetic data.
+The tab regression covers 125 panel views across 12 routes, checking panel relationships, keyboard focus, the 12px text minimum, horizontal overflow and the review/approval/export/receiver flow. The v0.11 browser run adds 16 checks of destination/MFA views, for 141 in total. These are manual CDP-driven Chromium checks; the committed UI suite uses jsdom.
 
 Run automated checks from the project root:
 
 ```bash
 .venv-demo/bin/python -m pytest -q
+.venv-demo/bin/python -m pip check
+.venv-demo/bin/python -m compileall -q lexflow agents
 npm ci
 npm run test:ui
+node --check static/app.js
+node --check static/features.js
+node --check static/notary.js
+.venv-demo/bin/python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95
 ```
 
 Tests create isolated temporary data directories, leaving your running demo environment intact.
@@ -109,3 +119,75 @@ The earlier workspaces were also exercised end-to-end in Chromium at widths 320,
 | Extraction | 28 versioned synthetic cases across four schemas, negative/empty labels, aliases, duplicate normalization and conflicting values. Two damaged labels remain documented misses |
 
 Run `python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95`. The committed report records 100% precision, 97.2% recall and 98.6% micro F1 on this small synthetic text set. It does not measure OCR, external AI, legal correctness or representative office performance. CI is configured for pushes and pull requests; a hosted run has not been claimed. Docker, external SMTP and an actual vendor destination still require target-environment validation.
+
+## Extending the extraction evaluation
+
+Use a separately labelled JSON dataset with this shape, and set `synthetic` honestly:
+
+```json
+{
+  "format": "lexflow-extraction-evaluation-v1",
+  "version": "example-synthetic-v1",
+  "synthetic": true,
+  "limitations": "One synthetic text example; no OCR or office-performance claim.",
+  "cases": [
+    {
+      "id": "example-1",
+      "matter_type": "general",
+      "text": "Client name: Taylor Example\nMatter reference: SYN-101",
+      "expected": {
+        "client_name": ["Taylor Example"],
+        "matter_reference": ["SYN-101"]
+      }
+    }
+  ]
+}
+```
+
+Run `python -m lexflow.benchmark --dataset /path/to/labelled.json --output /tmp/office-report.json --min-f1 0.95`. Cases need unique IDs, a supported matter type, at most 200,000 text characters and supported field keys with non-empty value lists. List every expected distinct value for a conflicting field. An empty `expected` map represents a negative example. The complete dataset is limited to 16 MiB.
+
+Metrics compare normalized field/value sets: precision = TP/(TP+FP), recall = TP/(TP+FN), F1 = 2TP/(2TP+FP+FN). A wrong value counts as an unexpected value and a missed expected value. Undefined rates are `null`; a missing F1 or one below `--min-f1` fails the command. Reports record the dataset SHA-256, per-schema/case counts and missed/unexpected field names. They omit source text and values, but case IDs and paths should still avoid private information. This CLI evaluates built-in offline rules; it does not load a workspace's learned rules or call external AI.
+
+## Rebuilding the demonstration PDF
+
+The source is [build_demo_guide.py](build_demo_guide.py), with synthetic screenshots in `docs/assets/`. From the repository root, use a separate documentation environment:
+
+```bash
+python3.12 -m venv /tmp/lexflow-pdf-env
+/tmp/lexflow-pdf-env/bin/python -m pip install -c constraints.txt -r docs/requirements-pdf.txt
+/tmp/lexflow-pdf-env/bin/python docs/build_demo_guide.py
+```
+
+The builder needs the DejaVu Sans, Sans Bold, Serif and Sans Mono TrueType fonts (the Linux default is `/usr/share/fonts/truetype/dejavu`; use `--font-dir` for another installation). It writes the tracked 12-page PDF, includes bookmarks and checks each page's content boundary. Open the result and inspect screenshots, footers and page breaks after editing. Runtime users do not need these optional PDF dependencies.
+
+## Rebuilding the presentation video
+
+[Watch the narrated MP4](LexFlow_AI_Presentation.mp4) or open the [browser player and transcript](LexFlow_AI_Presentation.html). The current presentation is **4:04**, 1920×1080 at 25 fps, H.264/AAC, with 12 embedded chapters, locally generated English narration and captions burned into the picture. A [WebVTT sidecar](LexFlow_AI_Presentation.vtt) supports reuse in other players.
+
+Edit [presentation_video.json](presentation_video.json) for scene titles, bullets, narration and source-page references. [build_presentation_video.py](build_presentation_video.py) renders landscape slides from those statements and the guide's screenshot assets, synthesizes speech locally with Flite, adds synchronized captions and encodes the MP4. It also writes the poster, HTML player/transcript and [provenance metadata](LexFlow_AI_Presentation.metadata.json), including the source PDF/story hashes and chapter timings. This is an adapted presentation rather than a live screen recording or a verbatim reading of every guide paragraph.
+
+Requirements: Python 3.12 with the project's Pillow dependency, DejaVu fonts, and FFmpeg/FFprobe with the `libx264` encoder and `ass`/`flite` filters. The default speech voice is `slt`. No online speech service or API key is used. On a system with those tools available:
+
+```bash
+# Review all slide layouts without encoding.
+.venv-demo/bin/python docs/build_presentation_video.py --preview-only --work-dir /tmp/lexflow-video-preview
+
+# Rebuild the complete media package.
+.venv-demo/bin/python docs/build_presentation_video.py --work-dir /tmp/lexflow-video-build
+
+# Inspect media streams, duration and chapter metadata.
+ffprobe -v error -show_streams -show_format -show_chapters -of json docs/LexFlow_AI_Presentation.mp4
+
+# Decode the complete video/audio to detect corrupt media.
+ffmpeg -v error -i docs/LexFlow_AI_Presentation.mp4 -map 0:v:0 -map 0:a:0 -f null -
+```
+
+Use `--font-dir` for another DejaVu installation, `--voice` for an available Flite voice, `--output` for an alternate MP4 destination or `--silent` for a captioned version without narration. Source assets resolve relative to `docs/`; output files sit beside the selected MP4. The generated player's PDF/README links assume the normal `docs/` destination. Rebuild the PDF first when its content changes, then regenerate the video so provenance hashes match. Keep runtime/duration references in the README and this checklist aligned after changing narration.
+
+Playback verification covers H.264/AAC streams, non-silent narration, 12 chapters, 48 timed captions, source hashes and page coverage, full media decoding and browser chapter navigation. If your browser restricts file playback, use the included [local viewer](serve_presentation.py), which supports HTTP byte ranges for reliable chapter seeking and serves only the docs plus the README. The player also supplies a direct MP4 download and readable transcript. The viewer is for loopback document viewing, not application deployment:
+
+```bash
+.venv-demo/bin/python docs/serve_presentation.py --port 8002
+```
+
+Open `http://127.0.0.1:8002/docs/LexFlow_AI_Presentation.html`. Application startup and the document/video player are separate; watching the video needs no demo account.

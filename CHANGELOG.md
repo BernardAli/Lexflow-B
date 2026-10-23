@@ -1,5 +1,17 @@
 # Changelog
 
+## Presentation video — 2026-10-23
+
+- Added a 4:04 narrated 1080p presentation adapted from the current guide, with 12 chapters, visible English captions and synthetic screenshots.
+- Added an offline browser player, full narration transcript, WebVTT captions, source provenance and reproducible local video build tooling.
+- Linked the video from the README and presenter PDF and documented media build/playback checks.
+
+## Documentation refresh — 2026-10-23
+
+- Aligned the README, architecture, roadmap, API, deployment, security and verification guides with v0.11; separated delivered features from customer-pilot milestones.
+- Documented MFA/session permissions, the three delivery destinations, signed acknowledgment hashes, transfer recovery, environment loading and portable/container restore constraints.
+- Updated the 12-page presenter PDF and added its source, optional build dependency and six synthetic screenshots to the repository.
+
 ## 0.11.0-prototype — 2026-10-23
 
 - Added the fictional NotaryDesk Demo: separate encrypted SQLite case store, local TLS receiver, signed acceptance receipts, case register, preparation stages and delivery-evidence tabs.

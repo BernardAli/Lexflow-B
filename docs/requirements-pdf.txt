@@ -1,0 +1,2 @@
+# Optional documentation-only dependencies; not needed by the application.
+reportlab==4.4.10
