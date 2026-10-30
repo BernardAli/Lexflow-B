@@ -1,8 +1,8 @@
 # Deployment and Recovery Guide
 
-**Release:** 0.11.0-prototype · **Updated:** 23 October 2026
+**Release:** 0.12.0-prototype · **Updated:** 30 October 2026
 
-Use the [presenter PDF](LexFlow_AI_Demonstration_Guide.pdf) for the demonstration and the [API reference](API.md) for request contracts. Examples run from the repository root. The default port is 8000; the current development demo uses 8001.
+Use the [presenter PDF](LexFlow_AI_Demonstration_Guide.pdf) for the demonstration and the [API reference](API.md) for request contracts. Examples run from the repository root. The default port is 8000; the README also shows an explicit port-3000 command. Use the port selected for your running process.
 
 ## Prerequisites
 
@@ -46,11 +46,37 @@ docker compose down --volumes       # erase all demo data irreversibly
 
 Run `./start.sh` (Linux/macOS), `.\start.ps1` (PowerShell), or follow the manual instructions in `README.md`. The server listens only on `127.0.0.1:8000`.
 
-Launch scripts use `.venv-demo` and select Python 3.12 to avoid changing an existing development environment. `LEXFLOW_PYTHON` can select its executable and `LEXFLOW_VENV_DIR` can select the environment directory. Dependencies are refreshed when `requirements.txt` or `constraints.txt` changes. If port 8000 is occupied, use `LEXFLOW_PORT=8001 ./start.sh` (PowerShell: `$env:LEXFLOW_PORT='8001'; .\start.ps1`).
+Launch scripts use `.venv-demo` and select Python 3.12 to avoid changing an existing development environment. `LEXFLOW_PYTHON` can select its executable and `LEXFLOW_VENV_DIR` can select the environment directory. Dependencies are refreshed when `requirements.txt` or `constraints.txt` changes. To use port 3000, run `LEXFLOW_PORT=3000 ./start.sh` (PowerShell: `$env:LEXFLOW_PORT='3000'; .\start.ps1`). Alternatively, use `.venv-demo/bin/python -m uvicorn lexflow.main:app --host 127.0.0.1 --port 3000` directly. There is no Django `runserver` command; `python -m lexflow.manage` provides operator commands only.
 
 On a subsequent start the app preserves its local database under `data/` unless `LEXFLOW_DATA_DIR` points elsewhere.
 
 The launchers load `.env` into the process. Values in that file can override values supplied before the launcher command; change or remove a conflicting `.env` entry when selecting a different port or data directory. Manual `python -m uvicorn`, `lexflow.manage` and benchmark commands do not load `.env` themselves.
+
+## Upgrading to v0.12
+
+1. Stop the running Python server with `Ctrl+C`. Use the same data-directory and external-key environment as that server for the backup commands. Load your trusted `.env` explicitly if needed; manual Python commands do not load it.
+2. Create and verify a snapshot in a **new directory** outside the active data directory. The paths below are examples for local rehearsal; choose durable backup storage for an office deployment.
+
+   ```bash
+   .venv-demo/bin/python -m lexflow.manage backup /tmp/lexflow-before-v012
+   .venv-demo/bin/python -m lexflow.manage verify-backup /tmp/lexflow-before-v012
+   ```
+
+3. Start the updated checkout with your existing configuration. Startup creates `matter_case_data` additively; there is no separate migration command and no required new environment variable. Existing users, source documents, field reviews, approvals and exports are retained. Flat names are not converted into guessed participant records.
+4. Refresh the browser. Verify `/api/health` reports `0.12.0-prototype`, open a matter's **Case details** tab and inspect **Integrations → Available connectors**. ProNotar32 must remain marked as awaiting a verified import format.
+5. In a synthetic rehearsal matter, save a participant and property, confirm extracted fields, confirm case details, approve and download a structured JSON bundle. Reopen the matter and verify that its case review clears and the old export becomes superseded.
+
+For Docker, rebuild/restart with `docker compose up --build` while retaining the existing named volume. Use the existing [backup and recovery procedures](#audit-checkpoints-snapshots-and-recovery) with the same container environment; do not remove the volume to upgrade.
+
+The new structured records and review metadata live in the main SQLite database and are included in authenticated backups/restores. Bundles use the existing export directory, encryption configuration and download authorization. Structured data and its audit history are database content: protecting original/export files alone does not encrypt these records.
+
+For rollback, preserve the upgraded store and restore a verified **pre-upgrade** snapshot into a new directory, then run the matching previous application release against it. An older release does not enforce structured-case review, so it should not operate on the upgraded working database. A pre-upgrade restore does not include work saved after that snapshot.
+
+### ProNotar compatibility configuration
+
+The target policy is the latest vendor-supported ProNotar32 release, not a pinned or tested build. `GET /api/connectors` reports `version_policy: latest_vendor_supported`, `verified_version: null` and no enabled ProNotar formats. There is no environment flag that makes an arbitrary XML file compatible. Operators must obtain the supported schema, accepted sample files, licensed-module details and import/update rules, then validate the adapter in a test installation. See [ProNotar extension steps](PRONOTAR_EXTENSION.md#implement-the-eventual-adapter).
+
+The current HTTPS destination configuration continues to send flat extraction fields; it does not send structured case bundles or connect to ProNotar automatically.
 
 ## Configuration reference
 

@@ -55,7 +55,7 @@ styles = {
 c = canvas.Canvas(str(OUTPUT), pagesize=A4, pageCompression=1)
 c.setTitle('LexFlow AI — Demonstration Guide')
 c.setAuthor('Allgift Technologies Ltd')
-c.setSubject('Presenter walkthrough for LexFlow AI v0.11.0-prototype; synthetic demonstration')
+c.setSubject('Presenter walkthrough for LexFlow AI v0.12.0-prototype; synthetic demonstration')
 c.setCreator('LexFlow AI documentation')
 
 
@@ -170,8 +170,8 @@ def footer(number):
     c.line(M,43,W-M,43)
     c.setFillColor(MUTED)
     c.setFont('Body',8)
-    c.drawString(M,28,'Allgift Technologies Ltd  ·  23 October 2026  ·  v0.11.0-prototype')
-    c.drawRightString(W-M,28,f'{number:02d} / 12')
+    c.drawString(M,28,'Allgift Technologies Ltd  ·  30 October 2026  ·  v0.12.0-prototype')
+    c.drawRightString(W-M,28,f'{number:02d} / 14')
 
 
 def finish(top, number):
@@ -198,8 +198,8 @@ c.setStrokeColor(GOLD)
 c.setLineWidth(1)
 c.line(M,H-323,W-M,H-323)
 label('PRESENTER EDITION',346,color=GOLD,size=10)
-para('A 15-minute walkthrough with exact actions, expected results, screenshots and client talking points.',374,kind='white')
-para('Version 0.11.0-prototype  ·  23 October 2026',454,kind='white')
+para('A 15-minute core walkthrough, plus structured case preparation and the ProNotar extension foundation.',374,kind='white')
+para('Version 0.12.0-prototype  ·  30 October 2026',454,kind='white')
 top=label('THE STORY TO TELL',541)
 top=para('Receive a document. Surface disagreement.<br/><b>Let a person decide. Keep the evidence.</b>',top)
 nodes=['Receive','Extract','Review','Approve','Export']
@@ -224,13 +224,13 @@ finish(top,1)
 
 # 2 — Setup and timed route.
 top=page(2,'Before the meeting','Prepare the demonstration','Use the Keller administrator account for the full walkthrough. Allow one rehearsal before presenting.')
-top=para('<b>Current local demo:</b> <link href="http://127.0.0.1:8001" color="#1c6a5c">http://127.0.0.1:8001</link><br/>To start it from the project folder on Linux/macOS:',top)
-top=code(['LEXFLOW_PORT=8001 ./start.sh'],top)
+top=para('<b>Local demo for this command:</b> <link href="http://127.0.0.1:3000" color="#1c6a5c">http://127.0.0.1:3000</link><br/>To start it from the project folder on Linux/macOS:',top)
+top=code(['LEXFLOW_PORT=3000 ./start.sh'],top)
 top=para('The launcher requires Python 3.12 and installs dependencies on first use. Docker (<b>docker compose up --build</b>) and Windows (<b>.\\start.ps1</b>) use port <b>8000</b> by default.',top,kind='small')
 top=table(['Account','Use during the demonstration'],[
     ['admin@keller.demo','Review, approve, teach rules and record baselines'],
     ['reviewer@keller.demo','Review, approve and export'],
-    ['assistant@keller.demo','Create/intake/read; approval controls are restricted'],
+    ['assistant@keller.demo','Create/intake/prepare; approval is restricted'],
     ['admin@weber.demo','Show a separate office workspace'],
 ],[220,CW-220],top)
 top=para('<b>Shared demo password:</b> <font name="Mono">LexFlowDemo2026!</font><br/>Use the current password if it was changed. If MFA is enabled, have an authenticator or unused recovery code ready.',top,kind='small')
@@ -241,8 +241,8 @@ top=table(['Time','Screen and purpose','Page'],[
     ['6:30–8:30','Teach a reusable extraction label','7'],
     ['8:30–15:00','Pilot evidence, security and close','8–12'],
 ],[81,CW-146,65],top)
-top=para('<b>Preflight:</b> confirm the server opens, sign in, locate <b>Start guided demo</b>, and keep the downloaded export folder ready. Each guided run creates a fresh matter.',top,kind='small',gap=0)
-top=para('<b>Companion video:</b> <link href="LexFlow_AI_Presentation.mp4" color="#1c6a5c">Watch the narrated presentation</link>. The browser player and full transcript are in <b>LexFlow_AI_Presentation.html</b>.',top+10,kind='small',gap=0)
+top=para('<b>Preflight:</b> sign in and locate <b>Start guided demo</b>; each run creates a fresh matter. Add five minutes for <b>Case details</b> and the bundle on pages 13–14.',top,kind='small',gap=0)
+top=para('<b>Historical video:</b> <link href="LexFlow_AI_Presentation.html" color="#1c6a5c">Watch the v0.11 presentation</link>. Its narration and the screenshots retained here cover the earlier core workflow.',top+10,kind='small',gap=0)
 finish(top,2)
 
 
@@ -270,7 +270,7 @@ top=image('12-source-suggestions.png',top,150,'Actual source suggestions from th
 top=steps([
     ('Resolve the disagreement.', 'Select <b>Review field</b> under Land register. Choose <b>München Blatt 872</b>, add a short review note and select <b>Confirm value</b>.'),
     ('Verify the remaining required fields.', 'Open each field, compare it with its source, then select <b>Confirm value</b>. A suggestion alone is not a confirmation.'),
-    ('Approve the matter.', 'When the approval gate is satisfied, select <b>Approve matter</b> and accept the confirmation dialog.'),
+    ('Approve the matter.', 'If case details were saved, confirm them first (page 14). Once all gates pass, select <b>Approve matter</b> and accept the dialog.'),
 ],top)
 top=table(['Required field','Expected value in this example'],[
     ['Buyer / Käufer','Anna Schmidt'],
@@ -287,7 +287,7 @@ finish(top,4)
 top=page(5,'03 / Controlled output','Generate approved data','Inspect the reviewed values and their destination field names before export.')
 top=steps([
     ('Open the preview.', 'From the approved matter, select <b>Export approved data</b>.'),
-    ('Select the output.', 'Choose <b>JSON — structured payload</b> and the <b>Approved export</b> profile. Read one mapped value in the preview.'),
+    ('Select the output.', 'Choose <b>JSON — structured payload</b> and <b>Flat reviewed fields</b>. This exports extraction fields only; the complete bundle is on page 14.'),
     ('Generate and open the file.', 'Select <b>Generate export</b>. The browser downloads the file and the matter records the generated output.'),
     ('Show the alternative.', 'Repeat with <b>CSV — mapped key-value rows</b> if the audience wants a spreadsheet-friendly format. Find outputs again under <b>Transfers &amp; exports</b>.'),
 ],top)
@@ -307,7 +307,7 @@ finish(top,5)
 
 
 # 6 — Receiver.
-top=page(6,'04 / Integration evidence','Demonstrate a handoff','Use NotaryDesk Demo to show approved delivery to a separate case-management workspace, with a signed acceptance receipt.')
+top=page(6,'04 / Integration evidence','Demonstrate a handoff','NotaryDesk Demo receives approved flat extraction fields and returns a signed receipt. Structured case records are not sent by this delivery flow.')
 top=image('17-notary-handoff.png',top,220,'The isolated rehearsal produced an accepted NotaryDesk receipt. Case references will differ.')
 top=steps([
     ('Choose the approved matter.', 'Open <b>Integrations</b>. Under <b>Preview a transfer</b>, select the Sonnenallee matter you just approved or exported.'),
@@ -372,7 +372,7 @@ top=steps([
 top=table(['Role','Review and output permissions'],[
     ['Admin','Confirms, approves, exports; manages rules, mappings and baselines.'],
     ['Reviewer','Confirms, approves and exports; previews rules.'],
-    ['Analyst','Creates and ingests records; cannot confirm, approve or export.'],
+    ['Analyst','Creates, ingests and prepares case records; cannot confirm, approve or generate exports.'],
 ],[107,CW-107],top)
 top=box('SAY TO THE AUDIENCE','“The prototype makes its controls visible. A dedicated HTTPS deployment profile, provisioning and backup tools are included. Authenticator-app MFA is included (page 12). Hosting validation, SSO and independent certification remain deployment work.”',top)
 finish(top,9)
@@ -383,8 +383,8 @@ top=page(10,'08 / Close and recover','Finish with a clear result','Close on the 
 top=box('CLOSING SCRIPT','“You have seen two source documents become reviewed structured data, a person resolve a conflict, an approved export and a signed demonstration handoff. The next pilot step is one supported vendor connection and observed office measurements.”',top)
 top=subtitle('Presenter recovery notes',top)
 top=table(['If this happens','Use this recovery'],[
-    ['The page does not open','Run the launcher from page 2. Use port 8001 for that command; Docker and the default launchers use 8000.'],
-    ['Approve is disabled','Confirm every required field and resolve every conflict, including optional fields. Analysts cannot approve.'],
+    ['The page does not open','Run the launcher from page 2 on port 3000; default launchers use 8000. This is FastAPI, not Django runserver.'],
+    ['Approve is disabled','Confirm required fields, resolve all conflicts and confirm saved case details. Analysts cannot approve.'],
     ['Export is superseded','Complete the required re-review, approve again and generate a new output.'],
     ['A learned label does not match','Check the matter type, chosen field, exact label and a colon or equals sign before the value. Keep the rule enabled.'],
     ['A scan has no useful text','Use the supplied digital PDF, DOCX or pasted synthetic text. Image recognition requires local OCR setup.'],
@@ -393,8 +393,8 @@ top=table(['If this happens','Use this recovery'],[
 top=subtitle('Optional account-recovery demonstration',top)
 top=para('At sign-in, select <b>Forgot password?</b> and request a link for a seeded account. The local demo shows <b>Create a new password</b> on screen; no email is sent. Links expire after 30 minutes. A completed reset changes the password and closes that account’s sessions, so rehearse with a secondary demo account.',top,kind='small')
 top=subtitle('Verification and supporting material',top)
-top=para('<b>23 October 2026:</b> 111 backend tests and 21 interface tests passed. The PDF rehearsal verified review, approval, export, signed HTTPS handoff, case-stage updates, MFA enrollment and recovery sign-in across five screen widths in an isolated synthetic workspace.',top,kind='small')
-top=para('Actual screenshots; matter references and counts vary. See <b>README.md</b>, <b>docs/DEPLOYMENT.md</b> and <b>docs/SECURITY_AND_LIMITATIONS.md</b>. Repository: <link href="https://github.com/BernardAli/Lexflow-B" color="#1c6a5c">BernardAli/Lexflow-B</link>.',top,kind='small',gap=0)
+top=para('<b>30 October 2026:</b> 134 backend tests and 26 UI logic tests passed. A synthetic browser rehearsal covered structured preparation through bundle download at widths 390, 768 and 1440. Earlier v0.11 checks covered 141 panel views; that broader run was not fully repeated.',top,kind='small')
+top=para('Retained screenshots show v0.11; references and counts vary. See <b>README.md</b>, <b>docs/DEPLOYMENT.md</b> and <b>docs/TEST_PLAN.md</b>. Repository: <link href="https://github.com/BernardAli/Lexflow-B" color="#1c6a5c">BernardAli/Lexflow-B</link>.',top,kind='small',gap=0)
 finish(top,10)
 
 # 11 — Separate demo destination.
@@ -405,7 +405,7 @@ top=steps([
     ('Prepare the case.', 'In <b>Case details</b>, choose <b>In preparation</b> and select <b>Save case stage</b>. The case register and counts update.'),
     ('Inspect delivery evidence.', 'Open <b>Delivery evidence</b> to show the receipt, source approval and payload fingerprint. Follow the link back to the source matter.'),
 ],top)
-top=box('SAY TO THE AUDIENCE','“The receiving workspace keeps its own encrypted case and preparation stage. Delivery is signed, certificate-verified and duplicate-protected. NotaryDesk is our fictional demonstration destination; we can choose the real vendor later.”',top)
+top=box('SAY TO THE AUDIENCE','“This fictional destination keeps its own encrypted case and preparation stage. Delivery is signed and duplicate-protected. ProNotar is the planned vendor target; its version and import contract still need verification.”',top)
 top=para('Reviewers and administrators can change stages; analysts have read access. The server rejects stale revisions and other workspaces’ case IDs. The destination is available only with demo seeding enabled.',top,kind='small')
 finish(top,11)
 
@@ -420,11 +420,46 @@ top=table(['Evidence','Verified result'],[
     ['Backup and restore','Authenticated file manifest, artifact/audit verification and restoration to a new path. Restored sessions are revoked; enrolled factors and case records survive.'],
     ['Interrupted transfer','The intent and original key survive. Same-key retry after receiver commit does not create a duplicate. Uncertain outcomes require destination inspection.'],
     ['Extraction benchmark','28 hand-authored synthetic text cases: precision 100%, recall 97.2%, F1 98.6%. Two damaged labels remain misses. Not an OCR or real-office accuracy claim.'],
-    ['Release checks','111 backend and 21 interface tests pass. Chromium checks cover 141 panel views over five widths. CI runs tests and the versioned benchmark.'],
+    ['Release checks','134 backend and 26 UI logic tests pass. The structured-case browser flow passes at three widths. CI runs tests and the synthetic benchmark.'],
 ],[145,CW-145],top)
 top=box('OPERATOR FOLLOW-UP','See <b>docs/DEPLOYMENT.md</b> for <b>backup</b>, <b>verify-backup</b>, <b>restore</b> and <b>deliver-pending</b> commands. The versioned synthetic dataset and report are in <b>evaluations/</b>. Keep external encryption and signing keys separately protected.',top)
 top=para('Real-vendor integration, representative office evaluation, SSO and target infrastructure validation remain separate release milestones.',top,kind='small')
 finish(top,12)
+
+# 13 — Structured preparation.
+top=page(13,'11 / Structured case preparation','Prepare the complete case','The v0.12 editor holds repeatable participants, properties and tasks. People prepare these records; flat extraction does not populate them automatically.')
+top=steps([
+    ('Open Case details.', 'Use a synthetic matter. If it is approved or exported, select <b>Reopen</b> first. This clears approval and supersedes earlier exports.'),
+    ('Add participants.', 'Create each person or company separately, assign roles and enter known details. A representative link selects another person in this case.'),
+    ('Add properties.', 'Enter each property with its register sheet, cadastral district, section, parcel, area and ownership share where known.'),
+    ('Keep source evidence.', 'Link each participant/property to documents in this matter or enter a verification note. Compare the records with the extracted fields; they are not synchronized automatically.'),
+    ('Set up the case.', 'Choose <b>Edit case setup</b>: category, office naming code, optional master case and template reference. <b>Use suggestion</b> proposes a handoff designation; it does not rename the matter.'),
+    ('Record execution tasks.', 'Track tasks as pending, initiated or completed. These are preparation records; no notification, court submission or external action runs.'),
+],top)
+top=table(['Preparation choice','Boundary to explain'],[
+    ['Six case categories','Handoff metadata; the four existing extraction workflows remain unchanged.'],
+    ['Office references','Master-case links and template names are stored locally; no Word template or vendor case is created.'],
+    ['Synthetic example','samples/09_structured_case.json illustrates the case model. It is not an intake upload or a ProNotar file.'],
+],[145,CW-145],top)
+top=box('REVIEW BEFORE APPROVAL','Analysts may prepare records. A reviewer/admin must confirm each saved revision, even an empty saved structure. Leave unknown facts blank and verify against source documents.',top)
+finish(top,13)
+
+# 14 — Structured review and extension boundary.
+top=page(14,'12 / Complete output and extension','Review, export, extend','The complete JSON bundle is the stable input for a future vendor adapter. It carries reviewed records without claiming a successful ProNotar import.')
+top=steps([
+    ('Finish field review.', 'Confirm required extracted fields and resolve every conflict. Changing a field or adding source documents clears saved case review.'),
+    ('Confirm case details.', 'As reviewer/admin, check participants, properties, sources and tasks, then select <b>Confirm case details</b>. Save conflicts require refreshing the current revision.'),
+    ('Approve the matter.', 'Both field review and saved case review must pass. Case confirmation alone does not approve the matter.'),
+    ('Download the complete bundle.', 'Select <b>Export approved data → Structured case bundle (JSON)</b>. Inspect the preview, generate the file and compare its records with the approved case.'),
+],top)
+top=table(['Output','What it includes'],[
+    ['Structured case bundle','Participants, properties, tasks, case metadata, field review provenance and source hashes; no original document bytes or local paths.'],
+    ['Flat exports and deliveries','Reviewed extraction fields only. JSON/CSV profiles and NotaryDesk/HTTPS delivery omit the new structured records.'],
+    ['ProNotar32 target','Latest vendor-supported release policy. Exact build and import specification unverified; the adapter remains disabled.'],
+],[145,CW-145],top)
+top=box('NEXT INTEGRATION STEP','Obtain the supported ProNotar build, licensed modules, import schema and accepted sample files. Implement and test a serializer in an authorized test installation before enabling it. No ProNotar XML is generated today.',top)
+top=para('The bundle digest detects content changes; it is not a digital signature or vendor receipt. See <b>docs/PRONOTAR_EXTENSION.md</b> for the adapter contract and <b>docs/API.md</b> for the revision-checked request sequence.',top,kind='small')
+finish(top,14)
 
 c.save()
 print(OUTPUT)

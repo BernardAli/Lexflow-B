@@ -1,4 +1,4 @@
-LEXFLOW AI | COMPREHENSIVE WORKING PROTOTYPE | OCTOBER 2026
+LEXFLOW AI | WORKING PROTOTYPE v0.12.0 | 30 OCTOBER 2026
 ==========================================================
 
 1. Open README.md for full instructions.
@@ -10,6 +10,11 @@ LEXFLOW AI | COMPREHENSIVE WORKING PROTOTYPE | OCTOBER 2026
    No Docker? On Linux/macOS run ./start.sh; on Windows run .\start.ps1
    Requires Python 3.12 and Internet for initial dependency installation.
 
+   Existing Python 3.12 environment, port 3000:
+      .venv-demo/bin/python -m uvicorn lexflow.main:app --host 127.0.0.1 --port 3000
+   Open http://127.0.0.1:3000. Restart an old server after updating the project.
+   This application uses FastAPI/Uvicorn, not manage.py runserver.
+
 3. DEMO LOGIN:
       Email:     admin@keller.demo
       Password:  LexFlowDemo2026!
@@ -18,8 +23,16 @@ LEXFLOW AI | COMPREHENSIVE WORKING PROTOTYPE | OCTOBER 2026
    Dashboard -> Start guided demo -> Land register conflict
    -> Review each required field -> Approve -> Export JSON/CSV.
 
+   NEW STRUCTURED CASE WORKFLOW:
+   Open a matter -> Case details -> Add people/companies, properties and tasks
+   -> Review extracted fields -> Confirm case details -> Approve
+   -> Export Structured case bundle (JSON).
+   Analysts prepare records; reviewers/admins confirm, approve and export.
+
 5. TEST DATA:
    Browse samples/ for realistic SYNTHETIC German TXT, EML, PDF and DOCX files.
+   samples/09_structured_case.json illustrates the case API model; it is not
+   accepted by Document intake and is not a ProNotar import file.
 
 6. DOCUMENTATION:
    README.md
@@ -29,8 +42,13 @@ LEXFLOW AI | COMPREHENSIVE WORKING PROTOTYPE | OCTOBER 2026
    docs/DEPLOYMENT.md
    docs/API.md
    docs/TEST_PLAN.md
+   docs/PRONOTAR_EXTENSION.md
+   The presenter PDF covers v0.12; the presentation video covers v0.11.
 
-IMPORTANT: No live Outlook, BNotK/XNP or notary software is connected.
-Local approved exports are real files; the connector is simulated.
+IMPORTANT: ProNotar32 targets the latest vendor-supported release, but its
+exact build/import specification and an actual import are not yet verified.
+No live ProNotar, Outlook, Word or BNotK/XNP connection is supplied.
+Structured bundles include the case records. Existing flat exports and
+delivery integrations include only reviewed extraction fields.
 This is a functional prototype, NOT a legally certified production SaaS.
 Do not upload confidential or genuine notarial client records.

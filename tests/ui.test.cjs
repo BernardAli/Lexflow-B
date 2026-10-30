@@ -4,7 +4,79 @@ const path = require('node:path');
 const test = require('node:test');
 const {JSDOM} = require('jsdom');
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'static/features.js'), 'utf8')+'\n'+fs.readFileSync(path.join(root, 'static/app.js'), 'utf8');
+const source = fs.readFileSync(path.join(root, 'static/case-data.js'), 'utf8')+'\n'+fs.readFileSync(path.join(root, 'static/features.js'), 'utf8')+'\n'+fs.readFileSync(path.join(root, 'static/app.js'), 'utf8');
+
+function structuredMatter() {
+  return {matter:{id:'case-test',status:'in_review'},documents:[{id:'source-1',name:'Synthetic source.txt'}],
+    case_data:{revision:3,reviewed_at:null,suggested_designation:'Example KV',data:{schema_version:1,
+      category:'property_transaction',designation:'Example KV',naming_code:'KV',master_matter_id:null,
+      template_reference:'',with_execution:true,participants:[],properties:[],tasks:[]}}};
+}
+
+test('case forms preserve participant identities, sources and expected revision',async t=>{
+  const {window,document,ui}=await browser(t);
+  ui.setState({matter:structuredMatter()});ui.setMatterPage(async()=>{});
+  const requests=[];
+  window.fetch=async(url,options)=>{requests.push({url,options});return {ok:true,status:200,json:async()=>({})};};
+  ui.editCaseRecord('participants');const form=document.querySelector('#case-record-form');
+  form.elements.name.value='Fictional Buyer';form.querySelector('[name=roles][value=buyer]').checked=true;
+  form.querySelector('[name=source_document_ids]').checked=true;form.elements.birth_date.value='1990-01-02';
+  form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requests.length,1);assert.equal(requests[0].url,'/api/matters/case-test/case-data');
+  assert.equal(requests[0].options.method,'PUT');assert.equal(requests[0].options.headers['X-CSRF-Token'],'test-token');
+  const body=JSON.parse(requests[0].options.body),person=body.data.participants[0];
+  assert.equal(body.expected_revision,3);assert.equal(person.name,'Fictional Buyer');assert.equal(person.birth_date,'1990-01-02');
+  assert.deepEqual(person.roles,['buyer']);assert.deepEqual(person.source_document_ids,['source-1']);
+  assert.ok(person.id);assert.equal(person.legal_form,undefined);assert.equal(document.querySelector('#case-record-form'),null);
+});
+
+test('company selection clears person fields and preserves a stale edit for recovery',async t=>{
+  const {window,document,ui}=await browser(t);ui.setState({matter:structuredMatter()});let sent;
+  window.fetch=async(url,options)=>{sent=JSON.parse(options.body);return {ok:false,status:409,json:async()=>({detail:'Case details changed. Reload the matter before saving'})};};
+  ui.editCaseRecord('participants');const form=document.querySelector('#case-record-form');
+  form.elements.birth_date.value='1990-01-02';form.elements.entity_type.value='company';
+  form.elements.entity_type.dispatchEvent(new window.Event('change'));
+  assert.equal(form.querySelector('[data-entity-fields=person]').hidden,true);assert.equal(form.querySelector('[data-entity-fields=company]').hidden,false);
+  form.elements.name.value='Fictional Company GmbH';form.elements.legal_form.value='GmbH';
+  form.querySelector('[name=roles][value=seller]').checked=true;
+  form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(sent.data.participants[0].birth_date,undefined);assert.equal(sent.data.participants[0].legal_form,'GmbH');
+  assert.equal(document.querySelector('#case-record-form'),form);assert.equal(form.elements.name.value,'Fictional Company GmbH');
+  assert.equal(form.querySelector('[role=alert]').hidden,false);assert.match(form.querySelector('[role=alert]').textContent,/Reload/);
+});
+
+test('case records escape text and lock editing after approval',async t=>{
+  const {document,ui}=await browser(t);const detail=structuredMatter();detail.matter.status='approved';
+  detail.case_data.data.tasks=[{id:'t1',title:'<img src=x onerror=alert(1)>',status:'pending',due_date:null,note:'<script>bad()</script>'}];
+  ui.setState({matter:detail});document.querySelector('#app').innerHTML=ui.caseDetailsPanel(detail);
+  assert.equal(document.querySelector('img'),null);assert.equal(document.querySelector('#app script'),null);
+  assert.match(document.querySelector('.case-record').textContent,/<img/);
+  for(const action of ['case-add','case-edit','case-review'])assert.equal(document.querySelector(`[data-action=${action}]`),null);
+});
+
+test('structured cases default to JSON bundle and explain flat export omissions',async t=>{
+  const {window,document,ui}=await browser(t);ui.setState({matter:structuredMatter()});const urls=[];
+  window.fetch=async url=>{urls.push(url);return {ok:true,status:200,json:async()=>({preview:'synthetic preview'})};};
+  await ui.exportModal();const connector=document.querySelector('#export-connector'),format=document.querySelector('#export-format');
+  assert.equal(connector.value,'case_bundle');assert.equal(format.value,'json');assert.equal(format.querySelector('[value=csv]').disabled,true);
+  assert.match(document.querySelector('#export-scope').textContent,/not a verified ProNotar import/);assert.match(urls[0],/connector=case_bundle/);
+  connector.value='approved_export';connector.dispatchEvent(new window.Event('change'));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(format.querySelector('[value=csv]').disabled,false);assert.match(document.querySelector('#export-scope').textContent,/omitted/);
+});
+
+test('case naming suggests seller and buyer short names without saving implicitly',async t=>{
+  const {window,document,ui}=await browser(t);const detail=structuredMatter();
+  detail.case_data.data.participants=[{id:'p1',roles:['buyer'],name:'Buyer Full',short_name:'Buyer'},
+    {id:'p2',roles:['seller'],name:'Seller Full',short_name:'Seller'}];
+  ui.setState({matter:detail});window.fetch=async()=>({ok:true,status:200,json:async()=>({matters:[]})});
+  await ui.editCaseMetadata();const form=document.querySelector('#case-metadata-form');
+  form.elements.naming_code.value='KVV';form.elements.naming_code.dispatchEvent(new window.Event('input'));
+  document.querySelector('[data-action=case-use-name]').click();
+  assert.equal(form.elements.designation.value,'Seller/Buyer KVV');assert.equal(detail.case_data.data.designation,'Example KV');
+});
 
 async function browser(t,hash='') {
   const dom = new JSDOM(fs.readFileSync(path.join(root, 'static/index.html'), 'utf8'), {
@@ -15,6 +87,7 @@ async function browser(t,hash='') {
   dom.window.eval(source + `
     globalThis.uiTest = {showModal,closeModal,reviewModal,fieldCard,exportModal,showLogin,
       showForgotPassword,showResetPassword,render,workflowsPage,tabGroup,
+      caseDetailsPanel,editCaseRecord,editCaseMetadata,
       intakePage,settingsPage,pilotPage,integrationsPage,showMfaGate,showRecoveryCodes,mfaSettingsPanel,
       setState(value){Object.assign(S,value);},
       setMatterPage(fn){matterPage=fn;}

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0-prototype — 2026-10-30
+
+- Added structured case preparation for multiple people, companies, representatives and properties, source references, execution tasks, master-case links, office naming codes and template references.
+- Added a Case details editor, optimistic revisions, explicit reviewer confirmation, approval gating and invalidation on source/field changes or reopening.
+- Added a versioned complete JSON case bundle, source metadata and content digest, alongside the existing flat JSON/CSV exports.
+- Introduced a file adapter protocol and capability registry. ProNotar32 targets the latest vendor-supported release but remains disabled until its import contract and exact build are verified; no speculative XML or live vendor writes are provided.
+- Added additive database upgrade, backup/restore and browser/API regression coverage, a synthetic example and the ProNotar extension guide.
+- Refreshed README, quick start, API, architecture, deployment, security, roadmap and verification documentation for the structured-case workflow and export boundaries. Expanded the presenter PDF to 14 pages; retained the v0.11 video with its archived source guide and an explicit historical label.
+
 ## Presentation video — 2026-10-23
 
 - Added a 4:04 narrated 1080p presentation adapted from the current guide, with 12 chapters, visible English captions and synthetic screenshots.

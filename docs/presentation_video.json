@@ -2,7 +2,7 @@
   "format": "lexflow-presentation-story-v1",
   "version": "0.11.0-prototype",
   "title": "LexFlow AI — From documents to an approved handoff",
-  "source_pdf": "LexFlow_AI_Demonstration_Guide.pdf",
+  "source_pdf": "archive/LexFlow_AI_Demonstration_Guide_v0.11.pdf",
   "language": "en",
   "synthetic_content": true,
   "scenes": [

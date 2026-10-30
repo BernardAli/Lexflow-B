@@ -201,8 +201,11 @@ def test_revoke_other_sessions_and_detect_tampered_audit(admin):
     assert admin.post("/api/security/sessions/revoke-others").json()["revoked"] == 1
     assert admin.get("/api/auth/me", headers={"Cookie": "lexflow_session=" + first}).status_code == 401
     assert admin.get("/api/security/status").json()["audit_integrity"]["valid"] is True
+    tenant = admin.get("/api/auth/me").json()["user"]["tenant_id"]
     with db(write=True) as conn:
-        conn.execute("UPDATE audit SET action='tampered' WHERE id=(SELECT id FROM audit LIMIT 1)")
+        # The verifier checks this workspace; an unscoped LIMIT can pick the other
+        # demo tenant's randomly generated ID and leave this chain untouched.
+        conn.execute("UPDATE audit SET action='tampered' WHERE id=(SELECT id FROM audit WHERE tenant_id=? LIMIT 1)", (tenant,))
     assert admin.get("/api/security/audit-checkpoint").json()["valid"] is False
 
 

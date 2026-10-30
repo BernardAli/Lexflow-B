@@ -1,6 +1,6 @@
 # Security, Confidentiality and Regulatory Limitations
 
-**Release:** 0.11.0-prototype · **Updated:** 23 October 2026
+**Release:** 0.12.0-prototype · **Updated:** 30 October 2026
 
 Implementation evidence is in the [test plan](TEST_PLAN.md); operational setup is in [deployment and recovery](DEPLOYMENT.md). The default demonstration and hardened deployment have different active controls.
 
@@ -20,14 +20,27 @@ Implementation evidence is in the [test plan](TEST_PLAN.md); operational setup i
 - Cryptographically random server sessions; only hashed session tokens are stored in SQLite.
 - HttpOnly and SameSite Strict session cookies (Secure cookies opt-in for HTTPS deployments).
 - CSRF token verification on state-mutating authenticated endpoints.
-- Matter, document, candidate, export, audit and mapping operations scoped to the authenticated tenant.
+- Matter, structured-case, document, candidate, export, audit and mapping operations scoped to the authenticated tenant.
 - Role checks: analyst vs reviewer vs administrator.
 - All SQL uses parameterized values.
 - File extension allowlist and configurable file size limits.
 - Local-only document processing by default.
 - Explicitly configured external AI plus per-document opt-in, with reviewer approval still mandatory.
 - Original document SHA-256 hashes and evidence provenance.
-- Approval gate before file export.
+- Approval gate before file export, including current structured-case review when records have been saved.
+- Optimistic case revisions reject stale saves/reviews. Source changes, field confirmation/clearing and reopening invalidate case review; changes to approved records require reopening.
+- Structured source references must belong to the matter; representative links must point to other people in the same case. Master-case links must remain in the workspace and cannot form cycles.
+- ProNotar32 file generation stays disabled until an adapter has a verified import contract; the complete LexFlow JSON bundle is explicitly marked as a local, unverified vendor handoff.
+
+## Structured-case boundaries
+
+Analysts may enter case details. Reviewers and administrators may both prepare and confirm them; the application does **not** enforce a separate person for preparation and approval. Each participant/property needs a case source reference or a verification note before case review. These links and notes record provenance but do not prove the facts, verify identity or establish representative authority. Staff must reconcile manually entered records with documents and the separately reviewed extraction fields.
+
+Dates, email syntax, shares, record IDs and relationships receive structural validation. Company register numbers, tax identifiers, nationality, marital status and property rights are not checked against authoritative registries. There is no automatic cross-case participant matching, legal validation or extraction of every photographed questionnaire field.
+
+The `snapshot_sha256` in a structured bundle is a content digest, not a signature, approval credential or vendor receipt. Bundles contain personal/company/property details and review notes; downloading them creates a copy outside the application's recall controls. Original document bytes and local file paths are excluded, but filenames and document hashes remain in the bundle. The case JSON and full previous/new values in audit events require encrypted database/backup storage and an appropriate retention policy, just like the existing extracted text.
+
+Case categories, naming codes and template references are metadata. Execution tasks record status and optional due dates; they do not implement deadline notifications, external filings, billing or Word generation. The latest ProNotar-supported release is a target policy only; no exact version, XML schema or successful import has been verified. See [the extension guide](PRONOTAR_EXTENSION.md).
 
 ## Critical work required before production
 
@@ -49,10 +62,11 @@ Implementation evidence is in the [test plan](TEST_PLAN.md); operational setup i
 - MFA is optional for default seeded accounts. Mandatory enrollment is enforced in the hardened profile. No self-service lost-factor reset or managed recovery desk is supplied; password reset deliberately preserves the existing factor. Retain unused recovery codes separately.
 - SMTP recovery requires operator configuration; background email delivery is not durable. Demo mode intentionally displays links only for seeded, publicly documented identities and must not be used for confidential data.
 - No automated DLP, antivirus scanning, malware quarantine or content disarm.
-- Original files/exports can be encrypted per workspace. SQLite text, candidates, receiver payloads and audit details require encrypted infrastructure volumes; no managed key service is supplied.
+- Original files/exports can be encrypted per workspace. SQLite text, structured case records, candidates, receiver payloads and audit details require encrypted infrastructure volumes; no managed key service is supplied.
 - A folder intake agent and signed generic HTTPS destination adapter are included. Native Outlook/Word/DMS and vendor-specific notary/BNotK/XNP integrations are not implemented.
 - NotaryDesk runs a separate TLS receiver/database inside the same application process and data volume, and shares LexFlow browser authentication. Its received payloads are encrypted; receipt/stage/history metadata is not whole-database encrypted. It is a demonstration boundary, not an independently hosted vendor.
 - The `notary_demo` file-export connector generates a file. The `demo_notary` delivery connector transmits to fictional NotaryDesk Demo over local verified TLS; this is not a real vendor integration.
+- `case_bundle` is the only current output containing the new structured records. Flat JSON/CSV profiles and existing delivery payloads omit participants, properties and tasks. A ProNotar export request is rejected while its adapter is disabled.
 - No certified electronic signatures, notarization, legality verification, land-register lookup, AML/KYC, jurisdiction checks or legal advice.
 - Scanned PDFs are OCR'd locally only where Tesseract and PDFium are available, with up to 12 OCR pages per document. Mixed PDFs are checked per page; image files process up to 12 frames. Failed or skipped pages/frames produce warnings.
 - External AI output is an unverified suggestion; source quote may be unavailable, model output can be incorrect, and real legal processing requires stricter provider arrangements.

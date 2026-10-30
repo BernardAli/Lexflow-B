@@ -63,6 +63,11 @@ CREATE TABLE IF NOT EXISTS documents (
     media_type TEXT NOT NULL, byte_size INTEGER NOT NULL, sha256 TEXT NOT NULL,
     raw_text TEXT NOT NULL, file_path TEXT NOT NULL, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS matter_case_data (
+    matter_id TEXT PRIMARY KEY REFERENCES matters(id),
+    tenant_id TEXT NOT NULL REFERENCES tenants(id), revision INTEGER NOT NULL,
+    payload_json TEXT NOT NULL, reviewed_by TEXT REFERENCES users(id), reviewed_at TEXT
+);
 CREATE TABLE IF NOT EXISTS candidates (
     id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id),
     matter_id TEXT NOT NULL REFERENCES matters(id),

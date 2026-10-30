@@ -29,6 +29,7 @@ from .password_reset import request_reset, complete_reset
 from .security import validate_deployment, allowed_hosts, hardened
 from .storage import protect, reveal, keyring
 from .workflows import apply_rules
+from .case_data import case_state, case_blockers, invalidate_case_review
 
 
 @asynccontextmanager
@@ -58,7 +59,7 @@ async def lifespan(app: FastAPI):
         stop(destination)
 
 
-app = FastAPI(title="LexFlow AI", version="0.11.0-prototype", lifespan=lifespan,
+app = FastAPI(title="LexFlow AI", version="0.12.0-prototype", lifespan=lifespan,
               description="Synthetic demonstration of notarial document intake, verification and approved export.")
 app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "static"), name="static")
 
@@ -146,7 +147,7 @@ class FieldConfirm(BaseModel):
 
 class ExportRequest(BaseModel):
     format: Literal["json", "csv"] = "json"
-    connector: Literal["approved_export", "notary_demo"] = "approved_export"
+    connector: Literal["approved_export", "notary_demo", "case_bundle", "pronotar32"] = "approved_export"
 
 
 class MappingUpdate(BaseModel):
@@ -160,7 +161,7 @@ def page():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": "0.11.0-prototype", "environment": "HARDENED PROFILE" if hardened() else "LOCAL PROTOTYPE", "external_ai_enabled": allow_external_ai()}
+    return {"status": "ok", "version": "0.12.0-prototype", "environment": "HARDENED PROFILE" if hardened() else "LOCAL PROTOTYPE", "external_ai_enabled": allow_external_ai()}
 
 
 @app.post("/api/auth/login")
@@ -300,9 +301,11 @@ def matter_detail(matter_id: str, user=Depends(require_user)):
                                          (user["tenant_id"],matter_id)).fetchall()]
         fields = compose_fields(conn,m)
         required = [f for f in fields if f["required"]]
+        blockers = approval_blockers(fields) + case_blockers(conn, m)
         return {"matter": summarize_matter(conn,m),"fields":fields,"documents":docs,"exports":exports,
-                "ready_for_approval":bool(docs) and not approval_blockers(fields),
-                "approval_blockers":approval_blockers(fields),
+                "case_data": case_state(conn, m),
+                "ready_for_approval":bool(docs) and not blockers,
+                "approval_blockers":blockers,
                 "required_confirmed":sum(f["status"]=="confirmed" for f in required),
                 "required_total":len(required)}
 
@@ -343,6 +346,7 @@ def store_documents(conn, user, matter_id, prepared, paths):
                      {"reason":"new_documents", "previous_reviews":
                       [{"field":r["field_key"], **review_snapshot(r)} for r in previous]})
     invalidate_exports(conn, user, matter_id, "Source documents changed")
+    invalidate_case_review(conn, user, matter_id, "Source documents changed")
     target_dir = data_dir() / "uploads" / user["tenant_id"] / matter_id
     target_dir.mkdir(parents=True, exist_ok=True)
     for doc in prepared:
@@ -507,6 +511,7 @@ def confirm_field(matter_id: str, field_key: str, data: FieldConfirm,
         previous = conn.execute("SELECT * FROM field_reviews WHERE matter_id=? AND field_key=?",
                                 (matter_id,field_key)).fetchone()
         now = utcnow()
+        invalidate_case_review(conn, user, matter_id, "Reviewed field changed")
         conn.execute("""INSERT INTO field_reviews(id,tenant_id,matter_id,field_key,value,candidate_id,reviewer_id,note,reviewed_at)
                         VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(matter_id,field_key) DO UPDATE SET
                         value=excluded.value,candidate_id=excluded.candidate_id,reviewer_id=excluded.reviewer_id,
@@ -531,6 +536,7 @@ def clear_field(matter_id: str, field_key: str, user=Depends(minimum_role("revie
             raise HTTPException(status_code=409, detail="Reopen matter first")
         previous = conn.execute("SELECT * FROM field_reviews WHERE matter_id=? AND field_key=?",
                                 (matter_id,field_key)).fetchone()
+        invalidate_case_review(conn, user, matter_id, "Field review cleared")
         conn.execute("DELETE FROM field_reviews WHERE matter_id=? AND field_key=?",(matter_id,field_key))
         conn.execute("UPDATE matters SET status='in_review',updated_at=? WHERE id=?",(utcnow(),matter_id))
         record_audit(conn,user["tenant_id"],matter_id,user["id"],"field_unconfirmed",
@@ -548,7 +554,7 @@ def approve_matter(matter_id: str,user=Depends(minimum_role("reviewer"))):
             raise HTTPException(status_code=422, detail="At least one source document is required")
         fields = compose_fields(conn,m)
         required = [f for f in fields if f["required"]]
-        outstanding = approval_blockers(fields)
+        outstanding = approval_blockers(fields) + case_blockers(conn, m)
         if outstanding:
             raise HTTPException(status_code=422, detail="Review required fields and resolve all conflicts or invalid values: " + ", ".join(outstanding))
         now = utcnow()
@@ -568,13 +574,14 @@ def reopen_matter(matter_id: str,user=Depends(minimum_role("reviewer"))):
         conn.execute("UPDATE matters SET status='in_review',approved_by=NULL,approved_at=NULL,updated_at=? WHERE id=?",
                     (utcnow(),matter_id))
         invalidate_exports(conn,user,matter_id,"Matter reopened for review")
+        invalidate_case_review(conn, user, matter_id, "Matter reopened")
         record_audit(conn,user["tenant_id"],matter_id,user["id"],"matter_reopened",{})
     return {"ok":True}
 
 
 @app.get("/api/matters/{matter_id}/export/preview")
 def export_preview(matter_id: str,fmt: Literal["json","csv"]="json",
-                   connector: Literal["approved_export","notary_demo"]="approved_export", user=Depends(require_user)):
+                   connector: Literal["approved_export","notary_demo","case_bundle","pronotar32"]="approved_export", user=Depends(require_user)):
     with db() as conn:
         m = get_matter(conn,user,matter_id)
         payload = export_payload(conn,user,m,connector,fmt)
@@ -710,5 +717,7 @@ from .pilot import router as pilot_router
 from .security import router as security_router
 from .mfa import router as mfa_router
 from .demo_notary import router as demo_notary_router
-for feature_router in (workflows_router, integrations_router, pilot_router, security_router, mfa_router, demo_notary_router):
+from .case_data import router as case_data_router
+from .connectors import router as connectors_router
+for feature_router in (workflows_router, integrations_router, pilot_router, security_router, mfa_router, demo_notary_router, case_data_router, connectors_router):
     app.include_router(feature_router)

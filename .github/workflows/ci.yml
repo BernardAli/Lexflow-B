@@ -27,6 +27,7 @@ jobs:
           python -m pip check
           node --check static/app.js
           node --check static/features.js
+          node --check static/case-data.js
           node --check static/notary.js
       - name: Versioned extraction evaluation
         run: python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95

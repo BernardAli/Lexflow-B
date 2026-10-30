@@ -3,7 +3,7 @@ import time
 from fastapi import HTTPException
 from .db import record_audit, utcnow
 from .extraction import FIELD_META, SCHEMAS, comparison_value
-from .exporter import generate_export, validate_mappings
+from .exporter import validate_mappings
 from .validation import validate_field_value
 
 
@@ -114,17 +114,21 @@ def invalidate_exports(conn, user, matter_id, reason):
 
 
 def export_payload(conn, user, matter, connector, fmt):
+    from .case_data import case_blockers
+    from .connectors import approved_snapshot, serialize_snapshot, ConnectorUnavailable
     if matter["status"] not in ("approved", "exported"):
         raise HTTPException(status_code=409, detail="Approve the matter before export")
     fields = compose_fields(conn, matter)
-    blockers = approval_blockers(fields)
+    blockers = approval_blockers(fields) + case_blockers(conn, matter)
     if blockers:
         raise HTTPException(status_code=409, detail="Reopen and review these fields before export: " + ", ".join(blockers))
     mapping = {r["field_key"]: r["target_key"] for r in conn.execute(
         "SELECT field_key,target_key FROM connector_mappings WHERE tenant_id=?", (user["tenant_id"],))}
     try:
         validate_mappings(mapping)
-        return generate_export(matter, {f["key"]: f["value"] for f in fields if f["status"] == "confirmed"}, mapping, connector, fmt)
+        return serialize_snapshot(approved_snapshot(conn, user, matter, fields), mapping, connector, fmt)
+    except ConnectorUnavailable as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

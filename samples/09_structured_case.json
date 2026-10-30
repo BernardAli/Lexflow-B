@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "category": "property_transaction",
+  "designation": "Example Seller/Example Buyer KV",
+  "naming_code": "KV",
+  "template_reference": "Office property questionnaire",
+  "participants": [
+    {
+      "id": "example-seller",
+      "entity_type": "company",
+      "roles": ["seller"],
+      "name": "Example Seller GmbH",
+      "short_name": "Example Seller",
+      "legal_form": "GmbH",
+      "register_number": "HRB SYNTHETIC",
+      "representative_ids": ["example-representative"],
+      "source_note": "Invented demonstration company; verify against the case source documents"
+    },
+    {
+      "id": "example-representative",
+      "entity_type": "person",
+      "roles": ["representative"],
+      "name": "Example Representative",
+      "source_note": "Invented demonstration representative"
+    },
+    {
+      "id": "example-buyer",
+      "entity_type": "person",
+      "roles": ["buyer"],
+      "name": "Example Buyer",
+      "email": "buyer@example.test",
+      "source_note": "Invented demonstration buyer"
+    }
+  ],
+  "properties": [
+    {
+      "id": "example-property",
+      "address": {"street": "Example Street 1", "city": "Example City"},
+      "land_register": "Example district",
+      "sheet": "0001",
+      "district": "Example cadastral district",
+      "section": "01",
+      "parcel": "02/3",
+      "area_sqm": "120.50",
+      "ownership_share": "1/2",
+      "source_note": "Invented demonstration property"
+    }
+  ],
+  "tasks": [
+    {"id": "example-task", "title": "Check the completed questionnaire", "status": "pending"}
+  ]
+}

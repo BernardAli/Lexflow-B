@@ -1,9 +1,9 @@
 {
   "format": "lexflow-presentation-video-v1",
   "version": "0.11.0-prototype",
-  "source_pdf": "LexFlow_AI_Demonstration_Guide.pdf",
+  "source_pdf": "archive/LexFlow_AI_Demonstration_Guide_v0.11.pdf",
   "source_pdf_sha256": "cfd0568c3868788309a6febf93efb6f45641e9bb1ce2095d16688ba6f5fe74eb",
-  "story_sha256": "97e9a5fc605ff85b1d6b09c5516ee385181fbc8971ae17550f35ca9a2d1e09cd",
+  "story_sha256": "4002fcef4ff6d5f242cabe830e349f4939444c5d5496ae92ab079e8356cbae7c",
   "width": 1920,
   "height": 1080,
   "fps": 25,
@@ -122,5 +122,7 @@
     }
   ],
   "duration_seconds": 243.981333,
-  "bytes": 6901956
+  "bytes": 6901956,
+  "story_sha256_at_video_build": "97e9a5fc605ff85b1d6b09c5516ee385181fbc8971ae17550f35ca9a2d1e09cd",
+  "provenance_note": "2026-10-30: archived the original v0.11 source PDF and updated its descriptor path and story hash. Narration, scene content, video, poster and captions are unchanged; story_sha256_at_video_build retains the original descriptor hash."
 }

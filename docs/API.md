@@ -1,12 +1,23 @@
 # LexFlow API — Functional Prototype
 
-**Release:** 0.11.0-prototype · **Updated:** 23 October 2026
+**Release:** 0.12.0-prototype · **Updated:** 30 October 2026
 
 Interactive OpenAPI docs: `http://127.0.0.1:8000/docs` after server starts. All endpoints are JSON unless otherwise noted.
 
 OpenAPI/Swagger pages are disabled in the hardened profile. All API responses use `Cache-Control: no-store`. Requests must use an allowed Host name; the hardened profile requires HTTPS.
 
-The default Python/Docker port is 8000; use port 8001 when the launcher is configured for the current development demo. API authorization always derives the workspace from the authenticated user, not a client-supplied tenant ID.
+The default Python/Docker port is 8000; use port 3000 when following the README's explicit Uvicorn command. API authorization always derives the workspace from the authenticated user, not a client-supplied tenant ID.
+
+## Structured case records and file adapters
+
+- `GET /api/case-data/schema` — authenticated JSON Schema for the versioned case model.
+- `GET /api/connectors` — file-adapter capabilities, supported formats, scope and verification requirements. ProNotar32 reports `specification_required` and `latest_vendor_supported`, with no verified build or available formats.
+- `GET /api/matters/{id}/case-data` — `data`, `revision`, `reviewed_by`, `reviewed_at`, `suggested_designation`. An unsaved case has revision 0. Also included as `case_data` in matter detail.
+- `PUT /api/matters/{id}/case-data` — any authenticated workspace member may prepare an open matter using `{ "expected_revision": 0, "data": { "schema_version": 1, "participants": [], "properties": [], "tasks": [] } }`. Replaces the full structured document; omitted fields use model defaults. Saves increment revision and clear case review. Approved/exported matters must be reopened; stale revisions return 409. Unsupported fields and invalid relationships return 422. Source-document references must belong to the matter, and master cases to the workspace.
+- `POST /api/matters/{id}/case-data/review` — reviewer/admin; `{ "expected_revision": 1 }`. Requires a source document and a source link or verification note for every participant/property. Review must precede final approval. Field/source changes and reopening invalidate it and increment revision.
+- Existing export preview and generation endpoints now accept `connector=case_bundle` with `format=json` (preview query `fmt=json`). The bundle includes the complete structured case and source/review metadata; it does not transmit data or claim vendor compatibility. `pronotar32` returns 409 until an import adapter is verified. `case_bundle` with CSV returns 422.
+
+All writes require CSRF. Existing flat export/transfer formats remain unchanged and omit structured records. See [ProNotar extension guide](PRONOTAR_EXTENSION.md) for the full contract and a synthetic example.
 
 ## Workflow learning
 
@@ -90,6 +101,9 @@ Authenticated state-changing requests require the `lexflow_session` cookie and `
 | Operation | Analyst | Reviewer | Admin |
 |---|---|---|---|
 | Read own workspace, create matters and ingest documents | Yes | Yes | Yes |
+| Prepare/update case details on an open matter | Yes | Yes | Yes |
+| Confirm the current case-details revision | No | Yes | Yes |
+| Preview/download current approved output | Yes | Yes | Yes |
 | Confirm/clear fields, approve, reopen, generate output or send a transfer | No | Yes | Yes |
 | Preview learned rules | No | Yes | Yes |
 | Save/pause learned rules, change mappings, list members, set baselines | No | No | Yes |
@@ -111,17 +125,21 @@ Recovery links use `/#/reset-password?token=...`, keeping tokens in the URL frag
 | `/api/matters` | GET | Filter / list matters |
 | `/api/matters` | POST | Create matter (any authenticated user) |
 | `/api/demo/start` | POST | Create a fresh synthetic property-purchase example; demo mode only |
-| `/api/matters/{id}` | GET | Fields, evidence, documents, exports, review state |
+| `/api/matters/{id}` | GET | Fields, documents, exports, structured case state and combined approval blockers |
+| `/api/case-data/schema` | GET | JSON Schema for version-1 structured records |
+| `/api/connectors` | GET | File adapter capabilities and version-verification status |
+| `/api/matters/{id}/case-data` | GET/PUT | Read/replace complete case details (any authenticated workspace member; PUT requires open matter and matching revision) |
+| `/api/matters/{id}/case-data/review` | POST | Confirm current case revision (reviewer/admin) |
 | `/api/intake/text` | POST | Ingest pasted text; optionally external AI opt-in |
 | `/api/intake/upload` | POST | Multipart ingestion of up to six files |
 | `/api/documents/{id}` | GET | Extracted text and metadata |
 | `/api/documents/{id}/download` | GET | Download original document |
 | `/api/matters/{id}/fields/{key}/confirm` | POST | Human confirm (reviewer/admin) |
 | `/api/matters/{id}/fields/{key}/clear` | POST | Clear reviewed value (reviewer/admin) |
-| `/api/matters/{id}/approve` | POST | Validate required values and approve (reviewer/admin) |
+| `/api/matters/{id}/approve` | POST | Validate sources, fields and saved case review, then approve (reviewer/admin) |
 | `/api/matters/{id}/reopen` | POST | Invalidate approval to edit (reviewer/admin) |
-| `/api/matters/{id}/export/preview` | GET | Preview JSON/CSV (approved only) |
-| `/api/matters/{id}/exports` | POST | Generate local JSON/CSV (reviewer/admin) |
+| `/api/matters/{id}/export/preview` | GET | Preview flat JSON/CSV or complete JSON bundle (approved only) |
+| `/api/matters/{id}/exports` | POST | Generate local output using a supported file profile (reviewer/admin) |
 | `/api/exports` | GET | Export history |
 | `/api/exports/{id}/download` | GET | Download approved export |
 | `/api/audit` | GET | Tenant-scoped audit events |
@@ -167,13 +185,67 @@ Or use `{ "value": "München Blatt 812", "note": "Manual check" }` to enter a re
 
 The payload includes an explicit marker `not_a_live_transmission: true`. This endpoint does **not** connect to BNotK, XNP or notary case-management software.
 
-Approval requires valid confirmed required fields and no unresolved conflicts, including optional fields. Confirmation returns HTTP 422 for invalid amounts, dates, email addresses, or empty/invalid names. Monetary values use exact decimal normalization and dates use ISO format.
+Approval requires at least one source document, valid confirmed required fields, no unresolved conflicts (including optional fields), and current case review if structured data has been saved. Field confirmation returns HTTP 422 for invalid amounts, dates, email addresses, or empty/invalid names. Monetary values use exact decimal normalization and dates use ISO format.
 
-Export preview accepts `fmt=json|csv` and `connector=approved_export|notary_demo`. Preview and generation apply the same validation. Mapping destinations must be unique across the complete saved mapping set.
+Export preview accepts `fmt=json|csv`; generation uses the `format` body field. Both apply the same approval gates. Supported connector behavior is:
+
+| Connector | Formats | Scope / result |
+|---|---|---|
+| `approved_export` (default) | JSON, CSV | Mapped confirmed extraction fields |
+| `notary_demo` | JSON, CSV | Mock notary file with the same flat scope |
+| `case_bundle` | JSON only | Complete versioned case snapshot, source metadata and review provenance |
+| `pronotar32` | None enabled | HTTP 409; import contract/build unverified |
+
+Mapping destinations must be unique across the saved flat mapping set. The bundle uses internal keys and structured records, not those configurable destination keys. CSV with `case_bundle` returns 422. The default API connector remains `approved_export`; callers must explicitly request `case_bundle` for complete records. The browser selects that profile by default for a matter with saved case data. File profiles are separate from `/api/integrations` delivery destinations.
 
 Reopening, document intake, or changed mappings invalidate affected exports. History lists expose `invalidated_at` and `invalidation_reason`; superseded download endpoints return HTTP 409. Changed mappings also require renewed approval.
 
 Document detail includes persistent `warnings`. Field detail includes `review_candidate_id`, `reviewer_id`, and `validation_error`. Audit decision details preserve previous/new review values, complete notes, source candidates, and invalidated reviews.
+
+### Example — prepare, review and export case details
+
+For an open matter that already has a source document and confirmed required fields, first read `GET /api/matters/{id}/case-data`. An unsaved structure has revision 0. Send the complete replacement document with that revision:
+
+```json
+{
+  "expected_revision": 0,
+  "data": {
+    "schema_version": 1,
+    "category": "property_transaction",
+    "naming_code": "KV",
+    "designation": "Example Buyer KV",
+    "participants": [
+      {
+        "id": "example-buyer",
+        "entity_type": "person",
+        "roles": ["buyer"],
+        "name": "Example Buyer",
+        "source_note": "Synthetic example; checked against this matter's source"
+      }
+    ],
+    "properties": [],
+    "tasks": []
+  }
+}
+```
+
+Submit this to `PUT /api/matters/{id}/case-data`. Optional omitted model fields receive defaults; this is a full replacement, not a patch. Preserve record IDs on later edits. Use `source_document_ids` containing actual document IDs from this matter when linking evidence; notes are the alternative when no document is selected.
+
+After the successful save, a reviewer/admin submits the returned revision to `POST /api/matters/{id}/case-data/review`:
+
+```json
+{"expected_revision": 1}
+```
+
+Then approve with `POST /api/matters/{id}/approve`. Preview with `GET /api/matters/{id}/export/preview?connector=case_bundle&fmt=json` and generate via `POST /api/matters/{id}/exports`:
+
+```json
+{"connector": "case_bundle", "format": "json"}
+```
+
+Use the returned `download_url` with the authenticated session. The envelope contains `specification: lexflow-case-bundle-v1`, `not_a_live_transmission: true`, `vendor_import_verified: false`, `snapshot_sha256` and a `lexflow-case-v1` snapshot. A SHA-256 digest is not an import receipt. The [extension guide](PRONOTAR_EXTENSION.md#bundle-contract) defines its contents and encoding. The [larger synthetic example](../samples/09_structured_case.json) is the `data` object, not a full PUT request or a document-intake file.
+
+Stale revisions, edits to approved/exported matters and unverified ProNotar output return 409. Missing review prerequisites or invalid record/source relationships return 422. A master case outside the workspace is unavailable (404). Analysts cannot review or generate files (403). There is no case-data DELETE endpoint: saving an empty structure still retains a revision and its review requirement. Review/approval do not auto-populate structured participants from flat extraction fields.
 
 ## Authenticator APIs
 

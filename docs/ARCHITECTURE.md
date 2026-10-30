@@ -1,6 +1,12 @@
 # Product Architecture and Boundaries
 
-**Release:** 0.11.0-prototype · **Updated:** 23 October 2026
+**Release:** 0.12.0-prototype · **Updated:** 30 October 2026
+
+## Structured case extension
+
+`case_models.py` defines bounded version-1 participants, companies, representatives, properties and execution tasks. `case_data.py` persists validated JSON in the additive `matter_case_data` table with tenant ownership, optimistic revisions and explicit reviewer confirmation. Source/field changes and reopening invalidate case review. Both matter approval and export enforce that review when a structured record exists. Legacy matters without one retain their original behavior.
+
+`connectors.py` turns approved data into a stable `lexflow-case-v1` snapshot and routes file serialization through an adapter registry. The complete JSON bundle carries records, source-document hashes and review provenance; flat adapters preserve previous formats. The ProNotar32 adapter reports the latest supported release as its target policy but blocks output pending a verified build/import contract. Transport adapters and their existing flat payloads remain separate. See [extension details](PRONOTAR_EXTENSION.md).
 
 ## High-level view
 
@@ -11,10 +17,17 @@ flowchart TD
     Intake --> Rules[Local rules and workspace labels]
     Intake -. Server permission and per-intake consent .-> AI[Optional external AI]
     API --> Review[Shared matter service: review, approval and mapping]
+    API --> CaseData[Structured case editor: revisions and source validation]
+    CaseData --> DB
+    CaseData --> Review
     Review --> DB[(LexFlow SQLite)]
     Intake --> DB
-    Review --> Files[Tenant original files and approved JSON/CSV]
-    Review --> Outbox[Durable delivery intent and lease]
+    Intake --> Originals[Tenant original files]
+    Review --> Snapshot[Approved case snapshot]
+    Snapshot --> Adapters[File adapter registry]
+    Adapters --> Files[Complete JSON bundle or flat JSON/CSV]
+    Adapters -. Blocked until import contract verified .-> ProNotar[ProNotar32 target]
+    Review -->|Approved flat fields only| Outbox[Durable delivery intent and lease]
     Outbox --> Local[Local receiver in LexFlow SQLite]
     Outbox -->|Signed, verified HTTPS| Notary[NotaryDesk Demo receiver]
     Outbox -->|Configured signed HTTPS| Vendor[Operator-authorized destination]
@@ -36,7 +49,8 @@ The local Python launcher binds HTTP to loopback; the hardened stack places the 
 - **Document:** original bytes on disk, extracted text in database, digest and tenant scope.
 - **Candidate:** extracted value, confidence heuristic, originating document and evidence text.
 - **Field review:** human-confirmed field value, candidate link (or manual override), reviewer and time.
-- **Export:** stored mapped JSON/CSV, approved matter and creator.
+- **Structured case:** versioned JSON containing participants, properties, tasks and case metadata; independent revision and reviewer confirmation, scoped to one matter and tenant.
+- **Export:** stored complete case bundle or mapped flat JSON/CSV, approved matter and creator.
 - **Transfer/job:** tenant-scoped key, approved-payload fingerprint, immutable payload snapshot, destination binding, attempt count, lease and receipt state.
 - **Destination case:** independently stored encrypted received payload, receipt, preparation stage and revision in NotaryDesk Demo.
 - **Audit:** HMAC-chained per workspace, with verification and externally retainable checkpoints. The database is not immutable.
@@ -46,14 +60,16 @@ The local Python launcher binds HTTP to loopback; the hardened stack places the 
 ```mermaid
 stateDiagram-v2
     [*] --> new
-    new --> in_review: Document intake
-    in_review --> approved: Explicit approval after validation
+    new --> in_review: Document intake or case preparation
+    in_review --> approved: Required fields and saved case reviewed; explicit approval
     approved --> exported: Generate file or accept delivery
     exported --> in_review: Reopen, new intake or changed mapping
     approved --> in_review: Reopen, new intake or changed mapping
 ```
 
 Reviewing fields does not approve a matter automatically. `exported` records that a file was generated or a delivery accepted; a file alone does not prove destination receipt. NotaryDesk preparation stages (`received`, `in_preparation`, `ready_for_review`) belong to the destination and do not change the source matter's approval.
+
+Structured execution tasks use their own `pending`, `initiated` and `completed` statuses. These describe preparation records; updating a task does not submit anything to a court or alter a NotaryDesk stage.
 
 Uploading a new document invalidates existing field confirmations and the current approval, so previously verified values must be reviewed in the context of the new evidence. Earlier exports are marked superseded and their download endpoints return HTTP 409. Files downloaded previously cannot be recalled. Mapping changes also reset approval for affected approved matters. Review changes and invalidations preserve previous values, candidate IDs, reviewers and notes in tenant-scoped audit events.
 
@@ -66,6 +82,19 @@ Uploading a new document invalidates existing field confirmations and the curren
 
 Local extraction intentionally uses labeled values, not inferred legal opinions. Numeric confidence represents a rule or model hint, not a validated statistical probability. This conservative approach makes failure modes visible but does not fully solve complex legal data extraction.
 
+These four extraction schemas are separate from the six structured handoff categories: `property_transaction`, `company_agreement`, `power_of_attorney`, `will`, `bulk_certification` and `other`. Changing a handoff category does not change extraction rules. Repeatable participants, properties and tasks are entered and reconciled by people; they are not automatically populated by extraction in this release.
+
+## Structured revisions and review invalidation
+
+| Action | Effect |
+|---|---|
+| Save case details | Requires the current `expected_revision`; increments the revision and clears case review |
+| Confirm/clear a field, add source documents or reopen | Invalidates saved case review and increments its revision |
+| Confirm case review | Reviewer/admin confirms the current revision; does not approve the matter automatically |
+| Change field mappings | Invalidates affected approvals/exports; does not itself clear case review |
+
+Source references must identify documents in the same matter. Master matters must belong to the same tenant and cannot create a cycle. Representatives reference other person records within this case. A saved empty case still needs explicit review. No shared cross-matter contacts directory or automatic record reconciliation is provided.
+
 ## Isolation and request flow
 
 Every authenticated API query scopes records by `tenant_id`. Documents and exports also use tenant-specific filesystem subdirectories. The sample tenants can be used to demonstrate blocked cross-workspace access. This is **logical tenant isolation, not equivalent to the dedicated per-tenant databases, KMS keys and storage accounts shown as a target architecture in the original presentation**.
@@ -76,13 +105,16 @@ Every authenticated API query scopes records by `tenant_id`. Documents and expor
 2. Every file is parsed before external processing or durable changes. Original files, document metadata, candidates, review invalidation and audit events are saved as one batch; storage errors roll back the database and remove the new files. Parsing warnings remain available in the document viewer.
 3. The API collates candidates from all documents, normalizes comparison values and flags conflicts.
 4. Reviewer confirms each required field using a candidate or verified manual correction.
-5. Matter is explicitly approved only when required fields have valid, confirmed values, every optional or required conflict has been resolved, and at least one source document exists.
-6. Workspace-specific field mappings convert internal keys to destination field paths.
-7. JSON or CSV is generated as a local file, and an audit event is recorded.
+5. If case details have been saved, a reviewer/admin separately confirms their current revision and source references.
+6. Matter is explicitly approved only when required fields have valid, confirmed values, every optional or required conflict has been resolved, at least one source document exists, and saved case details are reviewed.
+7. File adapters serialize an approved snapshot. The complete bundle retains structured records and provenance; flat profiles map extraction fields to destination paths. Existing delivery adapters also send only those flat fields.
+8. The local file or delivery outcome is stored with an audit event. File generation does not prove vendor acceptance.
 
 | Identifier | Behavior |
 |---|---|
+| `case_bundle` | Local `lexflow-case-bundle-v1` JSON envelope containing a complete `lexflow-case-v1` snapshot, hashes and review provenance; no original file bytes |
 | `approved_export` / `notary_demo` | Local JSON/CSV file profiles; both mark JSON as `not_a_live_transmission: true` |
+| `pronotar32` | Disabled file adapter; latest vendor-supported release target, no verified version or import format |
 | `demo_receiver` | Durable local receiver record and receipt inside LexFlow; `simulated: true` |
 | `demo_notary` | Actual signed local HTTPS request to fictional NotaryDesk, separately encrypted received payload and signed receipt; `simulated: true` |
 | `webhook` | Signed HTTPS to an operator-configured workspace destination; `simulated: false`, without claiming vendor-specific support |
@@ -95,9 +127,11 @@ Password-only login creates a session for an unenrolled demo account. An enrolle
 
 In the hardened profile, an unenrolled account gets only enrollment/configuration/identity/logout access; case routes return 403. Activation revokes other sessions, marks the retained session as factor-verified and returns recovery codes once. Factor changes require both password and a valid factor. Password reset revokes sessions but preserves enrollment. The default absolute session expiry is 12 hours and inactivity expiry is 30 minutes.
 
-## Planned connector interface
+## File adapters and future vendor transport
 
-Production systems should introduce a connector interface with `validate_access()`, `map_schema()`, `dry_run()`, `write_approved_data()` and `audit_receipt()` methods, each with explicit least-privilege credentials and idempotency keys. Use documented official APIs/imports before attempting browser or UI automation, and validate with the relevant vendor, regulator and notarial customers.
+`connectors.py` supplies the `FileAdapter` protocol, capability metadata and adapter registry. Adapters serialize an approved snapshot; the capability catalog declares supported formats, readiness and version policy. Unsupported ProNotar requests fail closed rather than emitting speculative XML. Adding a vendor serializer requires a verified schema, mapping rules and acceptance fixtures.
+
+Transport remains a separate concern. A future vendor connection must validate access, preview the actual vendor payload, bind approval to that payload, handle idempotency and record destination acceptance using the vendor's supported interface. The current signed HTTPS adapter is a reusable delivery foundation, not evidence of ProNotar support.
 
 ## Versioned workflows, integration receipts and pilot evidence
 

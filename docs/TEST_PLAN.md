@@ -1,8 +1,12 @@
 # Demonstration and Verification Checklist
 
-**Release:** 0.11.0-prototype · **Evidence date:** 23 October 2026
+**Release:** 0.12.0-prototype · **Evidence date:** 30 October 2026
 
-The current release passed **111 backend tests, 21 UI tests and 141 Chromium page/panel checks**. Browser checks used isolated synthetic data at widths 320, 390, 768, 1440 and 1920 pixels. See [release verification](#0110-release-verification--2026-10-23) below for the coverage and limits; the [PDF guide](LexFlow_AI_Demonstration_Guide.pdf) provides presenter steps.
+Version 0.12 passed **134 backend tests and 26 UI logic tests**. A Chromium check using isolated synthetic data completed participant/property/task creation, case naming, review, approval, preview and download of the structured bundle. The downloaded snapshot matched the preview digest, no JavaScript errors were recorded, and layouts had no horizontal page overflow at widths 390, 768 and 1440 pixels. Dependency consistency and JavaScript syntax checks passed. The unchanged 28-case synthetic extraction benchmark reports precision 1.0, recall 0.971831 and F1 0.985714; this does not measure extraction of the new structured records or office documents.
+
+The backend run used `PYTHONDONTWRITEBYTECODE=1 .venv-demo/bin/python -m pytest -q -p no:cacheprovider`; browser logic used `node tests/ui.test.cjs`. Loopback access was needed for the FastAPI test client and local demo receiver. One existing audit regression was made deterministic by selecting the current workspace's audit row before tampering with it. An upstream Starlette/httpx deprecation warning remains; it did not affect the passing checks.
+
+ProNotar itself was not tested: the installed version, import schema and test installation remain unavailable. See [ProNotar extension verification](PRONOTAR_EXTENSION.md#verification) for the new coverage. The earlier v0.11 release passed 111 backend tests, 21 UI tests and 141 Chromium page/panel checks at widths 320, 390, 768, 1440 and 1920; those broader checks were not all repeated for v0.12. See [historical release verification](#0110-release-verification--2026-10-23). The [14-page PDF guide](LexFlow_AI_Demonstration_Guide.pdf) covers v0.12, including structured preparation on pages 13–14; its earlier screenshots and the narrated video show v0.11.
 
 | ID | Scenario | Expected outcome |
 |---|---|---|
@@ -11,13 +15,13 @@ The current release passed **111 backend tests, 21 UI tests and 141 Chromium pag
 | A03 | Login as admin@keller.demo | Dashboard for Notariat Keller only |
 | A04 | Open 2026-KEL-0041 | Land register 812/872 conflict with two sources |
 | A05 | Try approving before review | HTTP 422; approval blocked |
-| A06 | Confirm all required fields | Approval button unlocks |
+| A06 | Confirm required fields, resolve every conflict and review saved case details | Approval unlocks when a source exists and every gate is satisfied |
 | A07 | Approve matter | State changes to approved; audit event written |
 | A08 | Export as JSON | Downloadable mapped file, no live transmission |
 | A09 | Export as CSV | BOM-prefixed UTF-8 CSV, mapped key-value rows |
 | A10 | Reopen approved matter | Matter becomes in_review; approval reset |
 | A11 | Upload another document | Existing confirmations cleared for re-review |
-| A12 | Login as analyst | Can view/create/intake, but cannot confirm, approve, export or send transfers |
+| A12 | Login as analyst | Can view/create/intake and prepare case details; cannot confirm, approve, generate exports or send transfers |
 | A13 | Login as reviewer | Can confirm; cannot alter admin mappings |
 | A14 | Login as Weber admin | Keller matter cannot be read or modified |
 | A15 | Remove CSRF header | State mutation returns HTTP 403 |
@@ -84,6 +88,27 @@ Tabbed interface verification:
 
 The tab regression covers 125 panel views across 12 routes, checking panel relationships, keyboard focus, the 12px text minimum, horizontal overflow and the review/approval/export/receiver flow. The v0.11 browser run adds 16 checks of destination/MFA views, for 141 in total. These are manual CDP-driven Chromium checks; the committed UI suite uses jsdom.
 
+Structured case verification in v0.12:
+
+| ID | Scenario | Expected outcome |
+|---|---|---|
+| D01 | Add people, a company and multiple properties | Records round-trip independently with stable local IDs |
+| D02 | Save a category, naming code, designation, master case and template reference | Case metadata persists separately from matter title/reference and extraction schema |
+| D03 | Add a representative and execution tasks | Local relationships and pending/initiated/completed statuses persist; no external action occurs |
+| D04 | Save details as an analyst; attempt confirmation | Preparation succeeds; reviewer-only confirmation returns 403 |
+| D05 | Approve with saved, unreviewed details, including an empty structure | Approval blocked until the current case revision is reviewed |
+| D06 | Review a participant/property without sources or a verification note | Review rejected with actionable validation |
+| D07 | Add intake, confirm/clear a field or reopen after case review | Review cleared and revision incremented; earlier export invalidation remains enforced |
+| D08 | Save/review from a stale form | HTTP 409; newer records remain intact and the browser asks for refresh |
+| D09 | Link a foreign-matter source, foreign-tenant master or cyclic master chain | Invalid reference rejected without modifying saved data |
+| D10 | Submit invalid dates, shares, duplicate IDs or representative links | Structured validation rejects the document |
+| D11 | Preview and download an approved case bundle | Snapshot/digest agree; repeated records, review provenance and source hashes present; original bytes/paths absent |
+| D12 | Export flat JSON/CSV or send to NotaryDesk | Existing flat contract retained; structured records omitted |
+| D13 | Select ProNotar32 or request an unsupported format | Vendor adapter remains blocked; no guessed XML is emitted |
+| D14 | Initialize an existing database, then back up/restore structured records | Additive table and existing data survive; authenticated snapshot verifies |
+| D15 | Edit malicious-looking text or switch person/company forms | Text escaped, incompatible attributes cleared and approval-state controls respected |
+| D16 | Walk through preparation/review/export at 390, 768 and 1440 px | No script errors or horizontal page overflow; downloaded bundle matches preview |
+
 Run automated checks from the project root:
 
 ```bash
@@ -94,6 +119,7 @@ npm ci
 npm run test:ui
 node --check static/app.js
 node --check static/features.js
+node --check static/case-data.js
 node --check static/notary.js
 .venv-demo/bin/python -m lexflow.benchmark --output /tmp/extraction-report.json --min-f1 0.95
 ```
@@ -158,11 +184,13 @@ python3.12 -m venv /tmp/lexflow-pdf-env
 /tmp/lexflow-pdf-env/bin/python docs/build_demo_guide.py
 ```
 
-The builder needs the DejaVu Sans, Sans Bold, Serif and Sans Mono TrueType fonts (the Linux default is `/usr/share/fonts/truetype/dejavu`; use `--font-dir` for another installation). It writes the tracked 12-page PDF, includes bookmarks and checks each page's content boundary. Open the result and inspect screenshots, footers and page breaks after editing. Runtime users do not need these optional PDF dependencies.
+The builder needs the DejaVu Sans, Sans Bold, Serif and Sans Mono TrueType fonts (the Linux default is `/usr/share/fonts/truetype/dejavu`; use `--font-dir` for another installation). It writes the tracked 14-page v0.12 PDF, includes bookmarks and checks each page's content boundary. Open the result and inspect screenshots, footers and page breaks after editing. The six retained screenshots show the v0.11 core workflow; pages 13–14 document the new structured-case steps. Runtime users do not need these optional PDF dependencies.
+
+The October 30 documentation refresh built all 14 pages within their content boundaries, verified the 14 bookmarks and release footers, and visually checked pages 2, 4, 10, 13 and 14. Local Markdown/player links resolved and the API case examples validated against the actual Pydantic models. Historical video/poster/caption hashes remained unchanged and source provenance verified. These are documentation checks; the application test results above come from the preceding v0.12 implementation verification.
 
 ## Rebuilding the presentation video
 
-[Watch the narrated MP4](LexFlow_AI_Presentation.mp4) or open the [browser player and transcript](LexFlow_AI_Presentation.html). The current presentation is **4:04**, 1920×1080 at 25 fps, H.264/AAC, with 12 embedded chapters, locally generated English narration and captions burned into the picture. A [WebVTT sidecar](LexFlow_AI_Presentation.vtt) supports reuse in other players.
+[Watch the narrated MP4](LexFlow_AI_Presentation.mp4) or open the [browser player and transcript](LexFlow_AI_Presentation.html). This is the **historical v0.11 presentation**, **4:04**, 1920×1080 at 25 fps, H.264/AAC, with 12 embedded chapters, locally generated English narration and captions burned into the picture. A [WebVTT sidecar](LexFlow_AI_Presentation.vtt) supports reuse in other players. Its [original 12-page source PDF](archive/LexFlow_AI_Demonstration_Guide_v0.11.pdf) is retained for reproducibility. It does not demonstrate v0.12 case preparation or ProNotar compatibility.
 
 Edit [presentation_video.json](presentation_video.json) for scene titles, bullets, narration and source-page references. [build_presentation_video.py](build_presentation_video.py) renders landscape slides from those statements and the guide's screenshot assets, synthesizes speech locally with Flite, adds synchronized captions and encodes the MP4. It also writes the poster, HTML player/transcript and [provenance metadata](LexFlow_AI_Presentation.metadata.json), including the source PDF/story hashes and chapter timings. This is an adapted presentation rather than a live screen recording or a verbatim reading of every guide paragraph.
 
@@ -182,7 +210,7 @@ ffprobe -v error -show_streams -show_format -show_chapters -of json docs/LexFlow
 ffmpeg -v error -i docs/LexFlow_AI_Presentation.mp4 -map 0:v:0 -map 0:a:0 -f null -
 ```
 
-Use `--font-dir` for another DejaVu installation, `--voice` for an available Flite voice, `--output` for an alternate MP4 destination or `--silent` for a captioned version without narration. Source assets resolve relative to `docs/`; output files sit beside the selected MP4. The generated player's PDF/README links assume the normal `docs/` destination. Rebuild the PDF first when its content changes, then regenerate the video so provenance hashes match. Keep runtime/duration references in the README and this checklist aligned after changing narration.
+Use `--font-dir` for another DejaVu installation, `--voice` for an available Flite voice, `--output` for an alternate MP4 destination or `--silent` for a captioned version without narration. Source assets resolve relative to `docs/`; output files sit beside the selected MP4. The generated player's PDF/README links assume the normal `docs/` destination. The current story points to the archived v0.11 PDF, so updating the v0.12 guide does not require rebuilding historical media. To publish a new video edition, update the story, narration, slide labels, player edition and source PDF together, then regenerate and verify provenance hashes, duration and chapter references. The October 30 metadata note records the source-path relocation; video, poster and captions are unchanged.
 
 Playback verification covers H.264/AAC streams, non-silent narration, 12 chapters, 48 timed captions, source hashes and page coverage, full media decoding and browser chapter navigation. If your browser restricts file playback, use the included [local viewer](serve_presentation.py), which supports HTTP byte ranges for reliable chapter seeking and serves only the docs plus the README. The player also supplies a direct MP4 download and readable transcript. The viewer is for loopback document viewing, not application deployment:
 
