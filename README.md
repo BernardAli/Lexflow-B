@@ -12,6 +12,7 @@ The [public German product website](https://lexflow-ai.jaunty-ibis-0043.chatgpt.
 | Document | Use it for |
 |---|---|
 | [ProNotar32 extension foundation](docs/PRONOTAR_EXTENSION.md) | Structured case records, approval, versioned handoff and the future vendor adapter |
+| [EU safety, security and data-protection blueprint (24-page PDF)](docs/LexFlow_EU_Safety_Security_Blueprint.pdf) | Current controls, regulatory applicability, implementation gaps, evidence requirements and release gates; a roadmap, not a compliance certificate |
 | [Demonstration guide (14-page PDF)](docs/LexFlow_AI_Demonstration_Guide.pdf) | v0.12 presenter steps, structured case preparation, exports, NotaryDesk Demo and MFA |
 | [Presentation video (1080p MP4, v0.11)](docs/LexFlow_AI_Presentation.mp4) | Historical 4:04 narrated overview with English captions and 12 chapters |
 | [Video player and transcript](docs/LexFlow_AI_Presentation.html) | Watch with chapter navigation, read the narration and download captions |

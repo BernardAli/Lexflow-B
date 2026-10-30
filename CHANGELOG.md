@@ -1,5 +1,10 @@
 # Changelog
 
+## EU safety and security blueprint — 2026-10-30
+
+- Added a 24-page, source-cited PDF covering regulatory applicability, existing security controls, privacy and notarial secrecy, AI safety, ProNotar handoff, operational resilience, assurance and production release gates.
+- Distinguished proposed controls and conditional legal obligations from implemented prototype features; included current AI Act and CRA timelines, 21 official references, reproducible PDF source and a local evidence-hash manifest. No runtime behavior changed.
+
 ## Public German website — 2026-10-30
 
 - Split the website into 11 focused German pages with shared navigation, active states, breadcrumbs and a shorter homepage. Preserved old section and information-page URLs, moved the demo and pilot form onto dedicated pages, and added reproducible page generation with recursive link and metadata checks.

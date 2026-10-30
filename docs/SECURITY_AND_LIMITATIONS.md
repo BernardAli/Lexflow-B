@@ -4,6 +4,8 @@
 
 Implementation evidence is in the [test plan](TEST_PLAN.md); operational setup is in [deployment and recovery](DEPLOYMENT.md). The default demonstration and hardened deployment have different active controls.
 
+The [EU safety, security and data-protection blueprint](LexFlow_EU_Safety_Security_Blueprint.pdf) provides a 24-page implementation roadmap based on the October 30, 2026 project state and official sources. It distinguishes current mechanisms from deployment-specific GDPR, AI Act, CRA, NIS2 and German notarial requirements, proposed controls and independent assurance. It is not a certification or a legal opinion.
+
 **This application is a demonstrator, not a security-certified product. Do not put actual client or notarial secrets into its preconfigured demo workspace.**
 
 ## Controls already implemented

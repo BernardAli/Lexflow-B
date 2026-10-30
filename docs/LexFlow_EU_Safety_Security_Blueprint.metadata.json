@@ -1,0 +1,215 @@
+{
+  "title": "LexFlow AI \u2014 EU Safety, Security & Data Protection Blueprint",
+  "assessment_date": "2026-10-30",
+  "project_version": "0.12.0-prototype",
+  "pdf_sha256": "294924d4d8abc103e3c3779f061b193c2862adca54095777f5449e7b4439a9de",
+  "page_count": 24,
+  "source_sha256": "f7cece8848abdbdce3c1060eec69b14b686933e1faf4b84c99bdecc320133c05",
+  "page_layout": [
+    {
+      "page": 2,
+      "id": "decision",
+      "content_bottom": 682.2
+    },
+    {
+      "page": 3,
+      "id": "scope",
+      "content_bottom": 771.8
+    },
+    {
+      "page": 4,
+      "id": "laws",
+      "content_bottom": 659.5
+    },
+    {
+      "page": 5,
+      "id": "baseline",
+      "content_bottom": 664.9
+    },
+    {
+      "page": 6,
+      "id": "risks",
+      "content_bottom": 664.9
+    },
+    {
+      "page": 7,
+      "id": "privacy",
+      "content_bottom": 746.3
+    },
+    {
+      "page": 8,
+      "id": "lifecycle",
+      "content_bottom": 715.2
+    },
+    {
+      "page": 9,
+      "id": "suppliers",
+      "content_bottom": 716.5
+    },
+    {
+      "page": 10,
+      "id": "ai-law",
+      "content_bottom": 724.7
+    },
+    {
+      "page": 11,
+      "id": "ai-safety",
+      "content_bottom": 764.1
+    },
+    {
+      "page": 12,
+      "id": "access",
+      "content_bottom": 707.4
+    },
+    {
+      "page": 13,
+      "id": "crypto",
+      "content_bottom": 746.3
+    },
+    {
+      "page": 14,
+      "id": "engineering",
+      "content_bottom": 766.9
+    },
+    {
+      "page": 15,
+      "id": "integration",
+      "content_bottom": 716.0
+    },
+    {
+      "page": 16,
+      "id": "incidents",
+      "content_bottom": 729.0
+    },
+    {
+      "page": 17,
+      "id": "governance",
+      "content_bottom": 729.8
+    },
+    {
+      "page": 18,
+      "id": "roadmap",
+      "content_bottom": 741.4
+    },
+    {
+      "page": 19,
+      "id": "release",
+      "content_bottom": 750.6
+    },
+    {
+      "page": 20,
+      "id": "mapping",
+      "content_bottom": 658.2
+    },
+    {
+      "page": 21,
+      "id": "evidence",
+      "content_bottom": 771.5
+    },
+    {
+      "page": 22,
+      "id": "sources-1",
+      "content_bottom": 602.8
+    },
+    {
+      "page": 23,
+      "id": "sources-2",
+      "content_bottom": 615.2
+    },
+    {
+      "page": 24,
+      "id": "sources-3",
+      "content_bottom": 615.2
+    }
+  ],
+  "evidence": [
+    {
+      "path": "docs/SECURITY_AND_LIMITATIONS.md",
+      "sha256": "124a4f31d3615a971199a044ade441099973daf017a90a3f420c194822c81d6b"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "f195e3536bbba8a862b88a05b3eedfb5b85460553c2b57efe51d75a927e36b8e"
+    },
+    {
+      "path": "docs/DEPLOYMENT.md",
+      "sha256": "4eba8efd0f3060e2557dcae8b57bbf58daf8abd4617b9bc30b5eb46bf7ee28dd"
+    },
+    {
+      "path": "docs/PRONOTAR_EXTENSION.md",
+      "sha256": "8494ba1f95ddc840bfb8945d31497f9c8668e7a6d99b5a229c119f9a6db43163"
+    },
+    {
+      "path": "docs/TEST_PLAN.md",
+      "sha256": "ad531be06a3d7768acd40aad2cdf8146f6314ec5b54cd42683ba0c06fa587315"
+    },
+    {
+      "path": "lexflow/auth.py",
+      "sha256": "233b746207d345d8f51cea298982797ddf672a7c59d217d3bf5946507d3c22d6"
+    },
+    {
+      "path": "lexflow/mfa.py",
+      "sha256": "c3137a596556da2981480eea38577a224b6b21483159292c0e1bba14adcf4f7f"
+    },
+    {
+      "path": "lexflow/settings.py",
+      "sha256": "c3cb5f1a681388eab2633ee8d32b053f3aea281507931f99f5de14cb8911d785"
+    },
+    {
+      "path": "lexflow/storage.py",
+      "sha256": "a54d2954880cd2234a497a7770783a44ba34267c32b245d301f8bd1427a16cbb"
+    },
+    {
+      "path": "lexflow/integrity.py",
+      "sha256": "48bd13db36b3160aaf2e8c196885f4dfa674e8eeef90e28be41e83eed30e8c44"
+    },
+    {
+      "path": "lexflow/extraction.py",
+      "sha256": "3963779c993873a3f64906b8a345f101ef359e92db23682ed7e1c0ab12b4a548"
+    },
+    {
+      "path": "lexflow/case_data.py",
+      "sha256": "523996448fc9657f3d2233760d855c2aa80542058163787582d18ea26720deb8"
+    },
+    {
+      "path": "lexflow/matter_service.py",
+      "sha256": "f016c8c766a455f374d489a88af194ed6f4599586e78647f10690f6adafc1b86"
+    },
+    {
+      "path": "lexflow/connectors.py",
+      "sha256": "d7c9160242456b80919717e38de46053012131f679a45ba8f81db35d5263daf9"
+    },
+    {
+      "path": "lexflow/snapshots.py",
+      "sha256": "24e51d87e918f7b619dadeff61153e53e14b486327d03b0367a49c6e0b07b358"
+    },
+    {
+      "path": "lexflow/delivery.py",
+      "sha256": "50b8b452640e7e3af365e56542d700ab3108120a072037f525c16e9b076561ef"
+    },
+    {
+      "path": "deploy/compose.hardened.yml",
+      "sha256": "1cb2b1f0598aab0308237d8062510ae14cf34ddb730f22256292fab3248ad85a"
+    },
+    {
+      "path": "tests/test_case_data.py",
+      "sha256": "a6152582e73369e4ee397cde8579877cbc5cee9524ac38e95140aacbf56a0529"
+    },
+    {
+      "path": "tests/test_mfa.py",
+      "sha256": "6706301ae99d5c730cc22b3131c8ef3fbe7e8540255d76b602f14d5db4525bc1"
+    },
+    {
+      "path": "tests/test_snapshots.py",
+      "sha256": "5585403ab1faa202bba1cc79ba39a412d8178f19a0fadf39d359b0815ce2e73a"
+    },
+    {
+      "path": "tests/test_delivery.py",
+      "sha256": "6072cebb6469502d0054cdb28bfa86a6560010e469ed68a7613072da398e2b08"
+    },
+    {
+      "path": "evaluations/synthetic-v1-report.json",
+      "sha256": "6d8f3681cb5060885fe74d4cfd26d83390d7b269f6b529873599a66b1d000ae3"
+    }
+  ]
+}

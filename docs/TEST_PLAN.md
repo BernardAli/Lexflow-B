@@ -188,6 +188,18 @@ The builder needs the DejaVu Sans, Sans Bold, Serif and Sans Mono TrueType fonts
 
 The October 30 documentation refresh built all 14 pages within their content boundaries, verified the 14 bookmarks and release footers, and visually checked pages 2, 4, 10, 13 and 14. Local Markdown/player links resolved and the API case examples validated against the actual Pydantic models. Historical video/poster/caption hashes remained unchanged and source provenance verified. These are documentation checks; the application test results above come from the preceding v0.12 implementation verification.
 
+## Rebuilding the EU safety and security blueprint
+
+The [24-page blueprint](LexFlow_EU_Safety_Security_Blueprint.pdf) is generated from [eu_security_blueprint.json](eu_security_blueprint.json) by [build_eu_security_blueprint.py](build_eu_security_blueprint.py). Use the documentation environment and ReportLab dependency described above:
+
+```bash
+/tmp/lexflow-pdf-env/bin/python docs/build_eu_security_blueprint.py
+```
+
+The builder uses DejaVu Sans, Sans Bold, Sans Oblique and Serif fonts, checks content boundaries, adds bookmarks and source links, and writes [metadata with PDF/source/evidence hashes](LexFlow_EU_Safety_Security_Blueprint.metadata.json). `--output` and `--font-dir` can select other paths. Review the legal sources and project evidence before changing the assessment date or claims. A rebuild alone does not refresh the legal analysis.
+
+October 30, 2026 verification covered all 24 page boundaries, strict PDF parsing, bookmarks, selectable text, internal contents links, official-source link annotations and matching evidence hashes. Representative cover, architecture, incident-response, release-gate and reference pages were visually inspected. This was documentation verification; application tests were not re-run and no compliance certification or independent security assessment is implied.
+
 ## Rebuilding the presentation video
 
 [Watch the narrated MP4](LexFlow_AI_Presentation.mp4) or open the [browser player and transcript](LexFlow_AI_Presentation.html). This is the **historical v0.11 presentation**, **4:04**, 1920×1080 at 25 fps, H.264/AAC, with 12 embedded chapters, locally generated English narration and captions burned into the picture. A [WebVTT sidecar](LexFlow_AI_Presentation.vtt) supports reuse in other players. Its [original 12-page source PDF](archive/LexFlow_AI_Demonstration_Guide_v0.11.pdf) is retained for reproducibility. It does not demonstrate v0.12 case preparation or ProNotar compatibility.
