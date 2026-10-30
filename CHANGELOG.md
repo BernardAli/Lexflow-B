@@ -1,5 +1,13 @@
 # Changelog
 
+## Public German website — 2026-10-30
+
+- Split the website into 11 focused German pages with shared navigation, active states, breadcrumbs and a shorter homepage. Preserved old section and information-page URLs, moved the demo and pilot form onto dedicated pages, and added reproducible page generation with recursive link and metadata checks.
+- Added a separate public product website with responsive ivory/green design, German content, workflow explanation, security boundaries, integration roadmap and FAQs.
+- Added a browser-only synthetic source-review demonstration with explicit confirmation, invalidation after source changes and a downloadable illustrative JSON example.
+- Added German product and pilot PDFs, local pilot-brief generation, self-hosted fonts, sharing metadata and project/privacy pages. No business contact address or company registration details are invented.
+- Verified layouts at five widths, keyboard navigation, mobile menu, downloads and local links; published through Sites without exposing the application database or credentials.
+
 ## 0.12.0-prototype — 2026-10-30
 
 - Added structured case preparation for multiple people, companies, representatives and properties, source references, execution tasks, master-case links, office naming codes and template references.

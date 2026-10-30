@@ -7,6 +7,8 @@ LexFlow is a **runnable, interactive local web application**, based on the suppl
 
 ## Documentation
 
+The [public German product website](https://lexflow-ai.jaunty-ibis-0043.chatgpt.site) has a concise homepage and separate pages for the product, workflow, interactive demo, trust, ProNotar integration, downloads, pilot preparation and FAQs, alongside project/privacy information. Its separate static source, page map and preview instructions are in [public-site/README.md](public-site/README.md). The website is a product presentation; it does not expose the application or its data. Pilot briefs download locally and are not sent to a contact address.
+
 | Document | Use it for |
 |---|---|
 | [ProNotar32 extension foundation](docs/PRONOTAR_EXTENSION.md) | Structured case records, approval, versioned handoff and the future vendor adapter |
